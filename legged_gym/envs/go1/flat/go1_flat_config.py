@@ -98,8 +98,8 @@ class Go1FlatCfg( LeggedRobotCfg ):
         randomize_base_mass = False
         added_mass_range = [-1., 1.]
         push_robots = True
-        push_interval_s = 15
-        max_push_vel_xy = 1.
+        push_interval_s = 4
+        max_push_vel_xy = 2.
     
     class rewards( LeggedRobotCfg.rewards ):
         class scales( LeggedRobotCfg.rewards.scales ):
@@ -118,6 +118,7 @@ class Go1FlatCfg( LeggedRobotCfg ):
             action_rate = -0.01
              
             feet_air_time = 0.0
+            low_feet_antislip = -0.025
             collision = -1.
             dof_pos_limits = -10.0
             # feet_stumble = -0.0 
@@ -130,6 +131,8 @@ class Go1FlatCfg( LeggedRobotCfg ):
         soft_torque_limit = 1.
         base_height_target = 0.34
         max_contact_force = 100. # forces above this value are penalized
+        low_feet_antislip_sigmoid_stiffness = 30.
+        foot_radius = 0.02  # [m]
     
     class normalization( LeggedRobotCfg.normalization ):
         class obs_scales( LeggedRobotCfg.normalization.obs_scales ):

@@ -109,6 +109,7 @@ class LeggedRobot(BaseTask):
         """
         self.gym.refresh_actor_root_state_tensor(self.sim)
         self.gym.refresh_net_contact_force_tensor(self.sim)
+        self.gym.refresh_rigid_body_state_tensor(self.sim)
 
         self.episode_length_buf += 1
         self.common_step_counter += 1
@@ -485,13 +486,16 @@ class LeggedRobot(BaseTask):
         actor_root_state = self.gym.acquire_actor_root_state_tensor(self.sim)
         dof_state_tensor = self.gym.acquire_dof_state_tensor(self.sim)
         net_contact_forces = self.gym.acquire_net_contact_force_tensor(self.sim)
+        rigid_body_states = self.gym.acquire_rigid_body_state_tensor(self.sim)
         self.gym.refresh_dof_state_tensor(self.sim)
         self.gym.refresh_actor_root_state_tensor(self.sim)
         self.gym.refresh_net_contact_force_tensor(self.sim)
+        self.gym.refresh_rigid_body_state_tensor(self.sim)
 
         # create some wrapper tensors for different slices
         self.root_states = gymtorch.wrap_tensor(actor_root_state)
         self.dof_state = gymtorch.wrap_tensor(dof_state_tensor)
+        self.rigid_body_states = gymtorch.wrap_tensor(rigid_body_states)
         self.dof_pos = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 0]
         self.dof_vel = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 1]
         self.base_quat = self.root_states[:, 3:7]
@@ -689,6 +693,12 @@ class LeggedRobot(BaseTask):
         self.feet_indices = torch.zeros(len(feet_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i in range(len(feet_names)):
             self.feet_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], feet_names[i])
+
+        self.foot_ids_rgd_bdy_state = []
+        for env_id in range(self.num_envs):
+            for name in feet_names:
+                foot_id = self.gym.find_actor_rigid_body_index(self.envs[env_id], self.actor_handles[env_id], name, gymapi.DOMAIN_SIM)
+                self.foot_ids_rgd_bdy_state.append(foot_id)
 
         self.penalised_contact_indices = torch.zeros(len(penalized_contact_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i in range(len(penalized_contact_names)):
@@ -891,6 +901,24 @@ class LeggedRobot(BaseTask):
         rew_airTime *= torch.norm(self.commands[:, :2], dim=1) > 0.1 #no reward for zero command
         self.feet_air_time *= ~contact_filt
         return rew_airTime
+    
+    def _get_minus_c_h_ft(self, z_ft):
+        # z_ft is the absolute height (z coord) of the foot
+        return -self.cfg.rewards.low_feet_antislip_sigmoid_stiffness * (z_ft - self.cfg.rewards.foot_radius)
+    
+    def _reward_low_feet_antislip(self):
+        # Penalize feet tangential velocity when feet height is low
+        # rwd = sum_{all feet}{ sigmoid(-c * h_ft) * || v_ft_tangential ||^2 }, (c > 0)
+        #     = sum_{all feet}{ 1 / (1 + exp(c * h_ft)) * || v_ft_tangential ||^2 }
+        # summed over all feet
+        # sigmoid(x) = 1/(1+exp(-x))
+        # NOTE: a negative reward scale is multiplied outside this function, just like other repulsive rewards
+
+        # NOTE: currently "tangential" is defined as v_xy for simplicity, may not work for steep slope
+        # NOTE: currently "h_ft" is defined as z_ft - foot_radius, so ONLY works for flat terrain
+        
+        return torch.sum(torch.sigmoid(self._get_minus_c_h_ft(self.rigid_body_states[self.foot_ids_rgd_bdy_state, 2])).view(self.num_envs, 4) \
+                         * self.rigid_body_states[self.foot_ids_rgd_bdy_state, 7:9].square().sum(dim=1).view(self.num_envs, 4), dim=1)
     
     def _reward_stumble(self):
         # Penalize feet hitting vertical surfaces
