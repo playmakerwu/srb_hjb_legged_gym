@@ -316,6 +316,11 @@ class LeggedRobot(BaseTask):
         if self.cfg.domain_rand.randomize_base_mass:
             rng = self.cfg.domain_rand.added_mass_range
             props[0].mass += np.random.uniform(rng[0], rng[1])
+        if self.cfg.domain_rand.randomize_base_com_pos:
+            rng = self.cfg.domain_rand.added_com_pos_range
+            props[0].com.x += np.random.uniform(-rng[0], rng[0])
+            props[0].com.y += np.random.uniform(-rng[1], rng[1])
+            props[0].com.z += np.random.uniform(-rng[2], rng[2])
         return props
     
     def _post_physics_step_callback(self):

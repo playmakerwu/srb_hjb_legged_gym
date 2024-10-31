@@ -48,6 +48,8 @@ def play(args):
     env_cfg.terrain.curriculum = False
     env_cfg.noise.add_noise = False
     env_cfg.domain_rand.randomize_friction = False
+    env_cfg.domain_rand.randomize_base_mass = False
+    env_cfg.domain_rand.randomize_base_com_pos = False
     # env_cfg.domain_rand.push_robots = False
 
     # prepare environment
