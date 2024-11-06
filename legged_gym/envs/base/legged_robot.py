@@ -141,6 +141,11 @@ class LeggedRobot(BaseTask):
         """ Check if environments need to be reset
         """
         self.reset_buf = torch.any(torch.norm(self.contact_forces[:, self.termination_contact_indices, :], dim=-1) > 1., dim=1)
+        
+        if(self.enable_termination_by_height):
+            self.termination_by_height_buf = torch.any(self.rigid_body_states_envwise[:, self.termination_by_height_indices, 2] < self.termination_by_height_min_heights, dim=1)
+            self.reset_buf |= self.termination_by_height_buf
+
         self.time_out_buf = self.episode_length_buf > self.max_episode_length # no terminal reward for time-outs
         self.reset_buf |= self.time_out_buf
 
@@ -504,6 +509,7 @@ class LeggedRobot(BaseTask):
         self.root_states = gymtorch.wrap_tensor(actor_root_state)
         self.dof_state = gymtorch.wrap_tensor(dof_state_tensor)
         self.rigid_body_states = gymtorch.wrap_tensor(rigid_body_states)
+        self.rigid_body_states_envwise = gymtorch.wrap_tensor(rigid_body_states).view(self.num_envs, -1, 13)
         self.dof_pos = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 0]
         self.dof_vel = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 1]
         self.base_quat = self.root_states[:, 3:7]
@@ -715,6 +721,19 @@ class LeggedRobot(BaseTask):
         self.termination_contact_indices = torch.zeros(len(termination_contact_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i in range(len(termination_contact_names)):
             self.termination_contact_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], termination_contact_names[i])
+        
+        self.enable_termination_by_height = False
+        if (self.cfg.asset.terminate_by_low_height.keys()):
+            self.enable_termination_by_height = True
+            if not self.cfg.terrain.mesh_type == "plane":
+                raise ValueError("cfg.asset.termination_by_height is only supported on cfg.terrain.mesh_type='plane'")
+            
+            self.termination_by_height_indices = torch.zeros(len(self.cfg.asset.terminate_by_low_height.keys()), dtype=torch.long, device=self.device, requires_grad=False)
+            self.termination_by_height_min_heights = torch.zeros((self.num_envs, len(self.cfg.asset.terminate_by_low_height.keys())), dtype=torch.float, device=self.device, requires_grad=False)
+            
+            for idx, (name, h_min) in enumerate(self.cfg.asset.terminate_by_low_height.items()):
+                self.termination_by_height_indices[idx] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], name)
+                self.termination_by_height_min_heights[:, idx] = h_min
 
     def _get_env_origins(self):
         """ Sets environment origins. On rough terrain the origins are defined by the terrain platforms.
