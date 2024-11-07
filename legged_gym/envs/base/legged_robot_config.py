@@ -91,6 +91,7 @@ class LeggedRobotCfg(BaseConfig):
         # PD Drive parameters:
         stiffness = {'joint_a': 10.0, 'joint_b': 15.}  # [N*m/rad]
         damping = {'joint_a': 1.0, 'joint_b': 1.5}     # [N*m*s/rad]
+        passive_dof_name_keywords = [] # list of keywords to identify passive dofs that must have 0 stiffness(p_gain)
         # action scale: target angle = actionScale * action + defaultAngle
         action_scale = 0.5
         # decimation: Number of control action updates @ sim DT per policy DT

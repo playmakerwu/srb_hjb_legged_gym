@@ -222,8 +222,8 @@ class LeggedRobot(BaseTask):
                                     self.base_ang_vel  * self.obs_scales.ang_vel,
                                     self.projected_gravity,
                                     self.commands[:, :3] * self.commands_scale,
-                                    (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,
-                                    self.dof_vel * self.obs_scales.dof_vel,
+                                    (self.dof_pos - self.default_dof_pos)[:, self.active_dof_indices] * self.obs_scales.dof_pos,
+                                    self.dof_vel[:, self.active_dof_indices] * self.obs_scales.dof_vel,
                                     self.last_actions
                                     ),dim=-1)
         # add perceptive inputs if not blind
@@ -377,13 +377,16 @@ class LeggedRobot(BaseTask):
         """
         #pd controller
         actions_scaled = actions * self.cfg.control.action_scale
+        # passive dofs have actions_scaled = 0, but since their p_gains are checked to be 0 in _init_buffers(), action values are not used
+        # only the d_gains matter for passive dofs
+        self.actions_scaled_including_passive[:, self.active_dof_indices] = actions_scaled
         control_type = self.cfg.control.control_type
         if control_type=="P":
-            torques = self.p_gains*(actions_scaled + self.default_dof_pos - self.dof_pos) - self.d_gains*self.dof_vel
+            torques = self.p_gains*(self.actions_scaled_including_passive + self.default_dof_pos - self.dof_pos) - self.d_gains*self.dof_vel
         elif control_type=="V":
-            torques = self.p_gains*(actions_scaled - self.dof_vel) - self.d_gains*(self.dof_vel - self.last_dof_vel)/self.sim_params.dt
+            torques = self.p_gains*(self.actions_scaled_including_passive - self.dof_vel) - self.d_gains*(self.dof_vel - self.last_dof_vel)/self.sim_params.dt
         elif control_type=="T":
-            torques = actions_scaled
+            torques = self.actions_scaled_including_passive
         else:
             raise NameError(f"Unknown controller type: {control_type}")
         return torch.clip(torques, -self.torque_limits, self.torque_limits)
@@ -522,10 +525,23 @@ class LeggedRobot(BaseTask):
         self.noise_scale_vec = self._get_noise_scale_vec(self.cfg)
         self.gravity_vec = to_torch(get_axis_params(-1., self.up_axis_idx), device=self.device).repeat((self.num_envs, 1))
         self.forward_vec = to_torch([1., 0., 0.], device=self.device).repeat((self.num_envs, 1))
-        self.torques = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device, requires_grad=False)
-        self.p_gains = torch.zeros(self.num_actions, dtype=torch.float, device=self.device, requires_grad=False)
-        self.d_gains = torch.zeros(self.num_actions, dtype=torch.float, device=self.device, requires_grad=False)
+        self.torques = torch.zeros(self.num_envs, self.num_dofs, dtype=torch.float, device=self.device, requires_grad=False)
+        self.p_gains = torch.zeros(self.num_dofs, dtype=torch.float, device=self.device, requires_grad=False)
+        self.d_gains = torch.zeros(self.num_dofs, dtype=torch.float, device=self.device, requires_grad=False)
         self.actions = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device, requires_grad=False)
+        self.actions_scaled_including_passive = torch.zeros(self.num_envs, self.num_dof, dtype=torch.float, device=self.device, requires_grad=False)
+        self.active_dof_indices = []
+        for idx, dof_name in enumerate(self.dof_names):
+            is_passive = False
+            for passive_dof_name_keyword in self.cfg.control.passive_dof_name_keywords:
+                if passive_dof_name_keyword in dof_name:
+                    is_passive = True
+                    break
+            if not is_passive:
+                self.active_dof_indices.append(idx)
+        if len(self.active_dof_indices) != self.num_actions:
+            raise ValueError("Number of active dofs must be equal to the number of actions")
+
         self.last_actions = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device, requires_grad=False)
         self.last_dof_vel = torch.zeros_like(self.dof_vel)
         self.last_root_vel = torch.zeros_like(self.root_states[:, 7:13])
@@ -553,10 +569,16 @@ class LeggedRobot(BaseTask):
                     self.d_gains[i] = self.cfg.control.damping[dof_name]
                     found = True
             if not found:
-                self.p_gains[i] = 0.
-                self.d_gains[i] = 0.
+                # self.p_gains[i] = 0.
+                # self.d_gains[i] = 0.
                 if self.cfg.control.control_type in ["P", "V"]:
-                    print(f"PD gain of joint {name} were not defined, setting them to zero")
+                    # print(f"PD gain of joint {name} were not defined, setting them to zero")
+                    raise ValueError(f"PD gain of joint {name} were not defined")
+            else:
+                # found PD gains, check passive joint P gains = 0
+                for passive_dof_name_keyword in self.cfg.control.passive_dof_name_keywords:
+                    if (passive_dof_name_keyword in name) and (self.p_gains[i] != 0.):
+                        raise ValueError(f"Passive joint {name} set to have non-zero stiffness")
         self.default_dof_pos = self.default_dof_pos.unsqueeze(0)
 
     def _prepare_reward_function(self):
@@ -869,15 +891,15 @@ class LeggedRobot(BaseTask):
     
     def _reward_torques(self):
         # Penalize torques
-        return torch.sum(torch.square(self.torques), dim=1)
+        return torch.sum(torch.square(self.torques[:, self.active_dof_indices]), dim=1)
 
     def _reward_dof_vel(self):
         # Penalize dof velocities
-        return torch.sum(torch.square(self.dof_vel), dim=1)
+        return torch.sum(torch.square(self.dof_vel[:, self.active_dof_indices]), dim=1)
     
     def _reward_dof_acc(self):
         # Penalize dof accelerations
-        return torch.sum(torch.square((self.last_dof_vel - self.dof_vel) / self.dt), dim=1)
+        return torch.sum(torch.square((self.last_dof_vel[:, self.active_dof_indices] - self.dof_vel[:, self.active_dof_indices]) / self.dt), dim=1)
     
     def _reward_action_rate(self):
         # Penalize changes in actions
@@ -954,7 +976,7 @@ class LeggedRobot(BaseTask):
         
     def _reward_stand_still(self):
         # Penalize motion at zero commands
-        return torch.sum(torch.abs(self.dof_pos - self.default_dof_pos), dim=1) * (torch.norm(self.commands[:, :2], dim=1) < 0.1)
+        return torch.sum(torch.abs(self.dof_pos[:, self.active_dof_indices] - self.default_dof_pos[:, self.active_dof_indices]), dim=1) * (torch.norm(self.commands[:, :2], dim=1) < 0.1)
 
     def _reward_feet_contact_forces(self):
         # penalize high contact forces
