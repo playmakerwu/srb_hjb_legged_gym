@@ -257,7 +257,7 @@
     </inertial>
   </link> -->
   <joint name="FR_roller_hinge" type="revolute">
-    <origin rpy="0 0 0" xyz="-0.032 0 -0.25"/>
+    <origin rpy="0 0 -0.524" xyz="-0.032 0 -0.25"/>
     <parent link="FR_calf"/>
     <child link="FR_roller"/>
     <axis xyz="0 1 0"/>
@@ -473,7 +473,7 @@
     </inertial>
   </link> -->
   <joint name="FL_roller_hinge" type="revolute">
-    <origin rpy="0 0 0" xyz="-0.032 0 -0.25"/>
+    <origin rpy="0 0 0.524" xyz="-0.032 0 -0.25"/>
     <parent link="FL_calf"/>
     <child link="FL_roller"/>
     <axis xyz="0 1 0"/>
@@ -689,7 +689,7 @@
     </inertial>
   </link> -->
   <joint name="RR_roller_hinge" type="revolute">
-    <origin rpy="0 0 0" xyz="-0.032 0 -0.25"/>
+    <origin rpy="0 0 -0.524" xyz="-0.032 0 -0.25"/>
     <parent link="RR_calf"/>
     <child link="RR_roller"/>
     <axis xyz="0 1 0"/>
@@ -905,7 +905,7 @@
     </inertial>
   </link> -->
   <joint name="RL_roller_hinge" type="revolute">
-    <origin rpy="0 0 0" xyz="-0.032 0 -0.25"/>
+    <origin rpy="0 0 0.524" xyz="-0.032 0 -0.25"/>
     <parent link="RL_calf"/>
     <child link="RL_roller"/>
     <axis xyz="0 1 0"/>

@@ -30,7 +30,7 @@
 
 from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCfgPPO
 
-class Go1FlatRollerCfg( LeggedRobotCfg ):
+class Go1FlatRollerVCfg( LeggedRobotCfg ):
     class env( LeggedRobotCfg.env ):
         num_observations = 49
         num_actions = 12
@@ -89,7 +89,7 @@ class Go1FlatRollerCfg( LeggedRobotCfg ):
         decimation = 4
   
     class asset( LeggedRobotCfg.asset ):
-        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/go1/urdf/go1_roller.urdf'
+        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/go1/urdf/go1_roller_v.urdf'
         name = "go1"
         foot_name = "roller"
         penalize_contacts_on = ["thigh", "calf"]
@@ -173,7 +173,7 @@ class Go1FlatRollerCfg( LeggedRobotCfg ):
         up_axis = 1  # 0 is y, 1 is z
 
 
-class Go1FlatRollerCfgPPO( LeggedRobotCfgPPO ):
+class Go1FlatRollerVCfgPPO( LeggedRobotCfgPPO ):
     class policy( LeggedRobotCfgPPO.policy ):
         actor_hidden_dims = [128, 64, 32]
         critic_hidden_dims = [128, 64, 32]
@@ -181,6 +181,6 @@ class Go1FlatRollerCfgPPO( LeggedRobotCfgPPO ):
 
     class runner ( LeggedRobotCfgPPO.runner):
         run_name = ''
-        experiment_name = 'go1_flat_roller'
+        experiment_name = 'go1_flat_roller_v'
         # load_run = -1
         # max_iterations = 300
