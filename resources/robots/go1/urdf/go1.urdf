@@ -4,6 +4,13 @@
 <!-- |    EDITING THIS FILE BY HAND IS NOT RECOMMENDED                                 | -->
 <!-- =================================================================================== -->
 <robot name="go1">
+  <mujoco>
+    <compiler 
+    meshdir="../meshes/" 
+    balanceinertia="true" 
+    discardvisual="false" />
+  </mujoco>
+  
   <material name="black">
     <color rgba="0.0 0.0 0.0 1.0"/>
   </material>
@@ -49,9 +56,9 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="../meshes/trunk.dae" scale="1 1 1"/>
+        <mesh filename="../meshes/trunk.stl" scale="1 1 1"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -107,9 +114,9 @@
     <visual>
       <origin rpy="3.141592653589793 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="../meshes/hip.dae" scale="1 1 1"/>
+        <mesh filename="../meshes/hip.stl" scale="1 1 1"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+      <material name="sliver"/>
     </visual>
     <collision>
       <origin rpy="1.5707963267948966 0 0" xyz="0 -0.08 0"/>
@@ -160,9 +167,9 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="../meshes/thigh_mirror.dae" scale="1 1 1"/>
+        <mesh filename="../meshes/thigh_mirror.stl" scale="1 1 1"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 1.5707963267948966 0" xyz="0 0 -0.1065"/>
@@ -213,9 +220,9 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="../meshes/calf.dae" scale="1 1 1"/>
+        <mesh filename="../meshes/calf.stl" scale="1 1 1"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 1.5707963267948966 0" xyz="0 0 -0.1065"/>
@@ -320,9 +327,9 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="../meshes/hip.dae" scale="1 1 1"/>
+        <mesh filename="../meshes/hip.stl" scale="1 1 1"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="1.5707963267948966 0 0" xyz="0 0.08 0"/>
@@ -373,9 +380,9 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="../meshes/thigh.dae" scale="1 1 1"/>
+        <mesh filename="../meshes/thigh.stl" scale="1 1 1"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 1.5707963267948966 0" xyz="0 0 -0.1065"/>
@@ -426,9 +433,9 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="../meshes/calf.dae" scale="1 1 1"/>
+        <mesh filename="../meshes/calf.stl" scale="1 1 1"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 1.5707963267948966 0" xyz="0 0 -0.1065"/>
@@ -533,9 +540,9 @@
     <visual>
       <origin rpy="3.141592653589793 3.141592653589793 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="../meshes/hip.dae" scale="1 1 1"/>
+        <mesh filename="../meshes/hip.stl" scale="1 1 1"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="1.5707963267948966 0 0" xyz="0 -0.08 0"/>
@@ -586,9 +593,9 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="../meshes/thigh_mirror.dae" scale="1 1 1"/>
+        <mesh filename="../meshes/thigh_mirror.stl" scale="1 1 1"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 1.5707963267948966 0" xyz="0 0 -0.1065"/>
@@ -639,9 +646,9 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="../meshes/calf.dae" scale="1 1 1"/>
+        <mesh filename="../meshes/calf.stl" scale="1 1 1"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 1.5707963267948966 0" xyz="0 0 -0.1065"/>
@@ -746,9 +753,9 @@
     <visual>
       <origin rpy="0 3.141592653589793 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="../meshes/hip.dae" scale="1 1 1"/>
+        <mesh filename="../meshes/hip.stl" scale="1 1 1"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="1.5707963267948966 0 0" xyz="0 0.08 0"/>
@@ -799,9 +806,9 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="../meshes/thigh.dae" scale="1 1 1"/>
+        <mesh filename="../meshes/thigh.stl" scale="1 1 1"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 1.5707963267948966 0" xyz="0 0 -0.1065"/>
@@ -852,9 +859,9 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="../meshes/calf.dae" scale="1 1 1"/>
+        <mesh filename="../meshes/calf.stl" scale="1 1 1"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 1.5707963267948966 0" xyz="0 0 -0.1065"/>
@@ -942,464 +949,5 @@
       <mechanicalReduction>1</mechanicalReduction>
     </actuator>
   </transmission> -->
-  <joint name="camera_joint_face" type="fixed">
-    <origin rpy="3.141592653589793 0 0" xyz="0.2785 0.0125 0.0167"/>
-    <parent link="trunk"/>
-    <child link="camera_face"/>
-  </joint>
-  <link name="camera_face">
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <box size=".001 .001 .001"/>
-      </geometry>
-    </collision>
-    <visual>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/depthCamera.dae" scale="1 1 1"/>
-      </geometry>
-    </visual>
-    <inertial>
-      <mass value="1e-5"/>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
-    </inertial>
-  </link>
-  <joint name="camera_optical_joint_face" type="fixed">
-    <origin rpy="-1.5707963267948966 0 -1.5707963267948966" xyz="0 0 0"/>
-    <parent link="camera_face"/>
-    <child link="camera_optical_face"/>
-  </joint>
-  <link name="camera_optical_face">
-        </link>
-  <gazebo reference="camera_face">
-    <!-- <material>Gazebo/Black</material> -->
-    <sensor name="camera_face_camera" type="depth">
-      <update_rate>16</update_rate>
-      <camera>
-        <horizontal_fov>2.094</horizontal_fov>
-        <image>
-          <width>928</width>
-          <height>800</height>
-          <format>R8G8B8</format>
-        </image>
-        <clip>
-          <near>0.1</near>
-          <far>5</far>
-        </clip>
-      </camera>
-      <plugin filename="libgazebo_ros_openni_kinect.so" name="camera_face_controller">
-        <baseline>0.025</baseline>
-        <alwaysOn>true</alwaysOn>
-        <updateRate>0.0</updateRate>
-        <cameraName>camera_face_ir</cameraName>
-        <imageTopicName>/camera_face/color/image_raw</imageTopicName>
-        <cameraInfoTopicName>/camera_face/color/camera_info</cameraInfoTopicName>
-        <depthImageTopicName>/camera_face/depth/image_raw</depthImageTopicName>
-        <depthImageInfoTopicName>/camera_face/depth/camera_info</depthImageInfoTopicName>
-        <!-- <pointCloudTopicName>/camera_${name}/depth/points</pointCloudTopicName> -->
-        <pointCloudTopicName>/cam1/point_cloud_face</pointCloudTopicName>
-        <frameName>camera_optical_face</frameName>
-        <pointCloudCutoff>0.1</pointCloudCutoff>
-        <pointCloudCutoffMax>1.5</pointCloudCutoffMax>
-        <distortionK1>0.0</distortionK1>
-        <distortionK2>0.0</distortionK2>
-        <distortionK3>0.0</distortionK3>
-        <distortionT1>0.0</distortionT1>
-        <distortionT2>0.0</distortionT2>
-        <CxPrime>0</CxPrime>
-        <Cx>0.0045</Cx>
-        <Cy>0.0039</Cy>
-        <focalLength>0</focalLength>
-        <hackBaseline>0</hackBaseline>
-      </plugin>
-    </sensor>
-  </gazebo>
-  <joint name="camera_joint_chin" type="fixed">
-    <origin rpy="3.141592653589793 1.5707963267948966 0" xyz="0.2522 0.0125 -0.0436"/>
-    <parent link="trunk"/>
-    <child link="camera_chin"/>
-  </joint>
-  <link name="camera_chin">
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <box size=".001 .001 .001"/>
-      </geometry>
-    </collision>
-    <visual>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/depthCamera.dae" scale="1 1 1"/>
-      </geometry>
-    </visual>
-    <inertial>
-      <mass value="1e-5"/>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
-    </inertial>
-  </link>
-  <joint name="camera_optical_joint_chin" type="fixed">
-    <origin rpy="-1.5707963267948966 0 -1.5707963267948966" xyz="0 0 0"/>
-    <parent link="camera_chin"/>
-    <child link="camera_optical_chin"/>
-  </joint>
-  <link name="camera_optical_chin">
-        </link>
-  <gazebo reference="camera_chin">
-    <!-- <material>Gazebo/Black</material> -->
-    <sensor name="camera_chin_camera" type="depth">
-      <update_rate>16</update_rate>
-      <camera>
-        <horizontal_fov>2.094</horizontal_fov>
-        <image>
-          <width>928</width>
-          <height>800</height>
-          <format>R8G8B8</format>
-        </image>
-        <clip>
-          <near>0.1</near>
-          <far>5</far>
-        </clip>
-      </camera>
-      <plugin filename="libgazebo_ros_openni_kinect.so" name="camera_chin_controller">
-        <baseline>0.025</baseline>
-        <alwaysOn>true</alwaysOn>
-        <updateRate>0.0</updateRate>
-        <cameraName>camera_chin_ir</cameraName>
-        <imageTopicName>/camera_chin/color/image_raw</imageTopicName>
-        <cameraInfoTopicName>/camera_chin/color/camera_info</cameraInfoTopicName>
-        <depthImageTopicName>/camera_chin/depth/image_raw</depthImageTopicName>
-        <depthImageInfoTopicName>/camera_chin/depth/camera_info</depthImageInfoTopicName>
-        <!-- <pointCloudTopicName>/camera_${name}/depth/points</pointCloudTopicName> -->
-        <pointCloudTopicName>/cam2/point_cloud_chin</pointCloudTopicName>
-        <frameName>camera_optical_chin</frameName>
-        <pointCloudCutoff>0.1</pointCloudCutoff>
-        <pointCloudCutoffMax>1.5</pointCloudCutoffMax>
-        <distortionK1>0.0</distortionK1>
-        <distortionK2>0.0</distortionK2>
-        <distortionK3>0.0</distortionK3>
-        <distortionT1>0.0</distortionT1>
-        <distortionT2>0.0</distortionT2>
-        <CxPrime>0</CxPrime>
-        <Cx>0.0045</Cx>
-        <Cy>0.0039</Cy>
-        <focalLength>0</focalLength>
-        <hackBaseline>0</hackBaseline>
-      </plugin>
-    </sensor>
-  </gazebo>
-  <joint name="camera_joint_left" type="fixed">
-    <origin rpy="3.141592653589793 0.2618 1.5707963267948966" xyz="-0.066 0.082 -0.0176"/>
-    <parent link="trunk"/>
-    <child link="camera_left"/>
-  </joint>
-  <link name="camera_left">
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <box size=".001 .001 .001"/>
-      </geometry>
-    </collision>
-    <visual>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/depthCamera.dae" scale="1 1 1"/>
-      </geometry>
-    </visual>
-    <inertial>
-      <mass value="1e-5"/>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
-    </inertial>
-  </link>
-  <joint name="camera_optical_joint_left" type="fixed">
-    <origin rpy="-1.5707963267948966 0 -1.5707963267948966" xyz="0 0 0"/>
-    <parent link="camera_left"/>
-    <child link="camera_optical_left"/>
-  </joint>
-  <link name="camera_optical_left">
-        </link>
-  <gazebo reference="camera_left">
-    <!-- <material>Gazebo/Black</material> -->
-    <sensor name="camera_left_camera" type="depth">
-      <update_rate>16</update_rate>
-      <camera>
-        <horizontal_fov>2.094</horizontal_fov>
-        <image>
-          <width>928</width>
-          <height>800</height>
-          <format>R8G8B8</format>
-        </image>
-        <clip>
-          <near>0.1</near>
-          <far>5</far>
-        </clip>
-      </camera>
-      <plugin filename="libgazebo_ros_openni_kinect.so" name="camera_left_controller">
-        <baseline>0.025</baseline>
-        <alwaysOn>true</alwaysOn>
-        <updateRate>0.0</updateRate>
-        <cameraName>camera_left_ir</cameraName>
-        <imageTopicName>/camera_left/color/image_raw</imageTopicName>
-        <cameraInfoTopicName>/camera_left/color/camera_info</cameraInfoTopicName>
-        <depthImageTopicName>/camera_left/depth/image_raw</depthImageTopicName>
-        <depthImageInfoTopicName>/camera_left/depth/camera_info</depthImageInfoTopicName>
-        <!-- <pointCloudTopicName>/camera_${name}/depth/points</pointCloudTopicName> -->
-        <pointCloudTopicName>/cam3/point_cloud_left</pointCloudTopicName>
-        <frameName>camera_optical_left</frameName>
-        <pointCloudCutoff>0.1</pointCloudCutoff>
-        <pointCloudCutoffMax>1.5</pointCloudCutoffMax>
-        <distortionK1>0.0</distortionK1>
-        <distortionK2>0.0</distortionK2>
-        <distortionK3>0.0</distortionK3>
-        <distortionT1>0.0</distortionT1>
-        <distortionT2>0.0</distortionT2>
-        <CxPrime>0</CxPrime>
-        <Cx>0.0045</Cx>
-        <Cy>0.0039</Cy>
-        <focalLength>0</focalLength>
-        <hackBaseline>0</hackBaseline>
-      </plugin>
-    </sensor>
-  </gazebo>
-  <joint name="camera_joint_right" type="fixed">
-    <origin rpy="3.141592653589793 0.2618 -1.5707963267948966" xyz="-0.041 -0.082 -0.0176"/>
-    <parent link="trunk"/>
-    <child link="camera_right"/>
-  </joint>
-  <link name="camera_right">
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <box size=".001 .001 .001"/>
-      </geometry>
-    </collision>
-    <visual>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/depthCamera.dae" scale="1 1 1"/>
-      </geometry>
-    </visual>
-    <inertial>
-      <mass value="1e-5"/>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
-    </inertial>
-  </link>
-  <joint name="camera_optical_joint_right" type="fixed">
-    <origin rpy="-1.5707963267948966 0 -1.5707963267948966" xyz="0 0 0"/>
-    <parent link="camera_right"/>
-    <child link="camera_optical_right"/>
-  </joint>
-  <link name="camera_optical_right">
-        </link>
-  <gazebo reference="camera_right">
-    <!-- <material>Gazebo/Black</material> -->
-    <sensor name="camera_right_camera" type="depth">
-      <update_rate>16</update_rate>
-      <camera>
-        <horizontal_fov>2.094</horizontal_fov>
-        <image>
-          <width>928</width>
-          <height>800</height>
-          <format>R8G8B8</format>
-        </image>
-        <clip>
-          <near>0.1</near>
-          <far>5</far>
-        </clip>
-      </camera>
-      <plugin filename="libgazebo_ros_openni_kinect.so" name="camera_right_controller">
-        <baseline>0.025</baseline>
-        <alwaysOn>true</alwaysOn>
-        <updateRate>0.0</updateRate>
-        <cameraName>camera_right_ir</cameraName>
-        <imageTopicName>/camera_right/color/image_raw</imageTopicName>
-        <cameraInfoTopicName>/camera_right/color/camera_info</cameraInfoTopicName>
-        <depthImageTopicName>/camera_right/depth/image_raw</depthImageTopicName>
-        <depthImageInfoTopicName>/camera_right/depth/camera_info</depthImageInfoTopicName>
-        <!-- <pointCloudTopicName>/camera_${name}/depth/points</pointCloudTopicName> -->
-        <pointCloudTopicName>/cam4/point_cloud_right</pointCloudTopicName>
-        <frameName>camera_optical_right</frameName>
-        <pointCloudCutoff>0.1</pointCloudCutoff>
-        <pointCloudCutoffMax>1.5</pointCloudCutoffMax>
-        <distortionK1>0.0</distortionK1>
-        <distortionK2>0.0</distortionK2>
-        <distortionK3>0.0</distortionK3>
-        <distortionT1>0.0</distortionT1>
-        <distortionT2>0.0</distortionT2>
-        <CxPrime>0</CxPrime>
-        <Cx>0.0045</Cx>
-        <Cy>0.0039</Cy>
-        <focalLength>0</focalLength>
-        <hackBaseline>0</hackBaseline>
-      </plugin>
-    </sensor>
-  </gazebo>
-  <joint name="camera_joint_rearDown" type="fixed">
-    <origin rpy="3.141592653589793 1.5707963267948966 0" xyz="-0.0825 0.0125 -0.04365"/>
-    <parent link="trunk"/>
-    <child link="camera_rearDown"/>
-  </joint>
-  <link name="camera_rearDown">
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <box size=".001 .001 .001"/>
-      </geometry>
-    </collision>
-    <visual>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/depthCamera.dae" scale="1 1 1"/>
-      </geometry>
-    </visual>
-    <inertial>
-      <mass value="1e-5"/>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
-    </inertial>
-  </link>
-  <joint name="camera_optical_joint_rearDown" type="fixed">
-    <origin rpy="-1.5707963267948966 0 -1.5707963267948966" xyz="0 0 0"/>
-    <parent link="camera_rearDown"/>
-    <child link="camera_optical_rearDown"/>
-  </joint>
-  <link name="camera_optical_rearDown">
-        </link>
-  <gazebo reference="camera_rearDown">
-    <!-- <material>Gazebo/Black</material> -->
-    <sensor name="camera_rearDown_camera" type="depth">
-      <update_rate>16</update_rate>
-      <camera>
-        <horizontal_fov>2.094</horizontal_fov>
-        <image>
-          <width>928</width>
-          <height>800</height>
-          <format>R8G8B8</format>
-        </image>
-        <clip>
-          <near>0.1</near>
-          <far>5</far>
-        </clip>
-      </camera>
-      <plugin filename="libgazebo_ros_openni_kinect.so" name="camera_rearDown_controller">
-        <baseline>0.025</baseline>
-        <alwaysOn>true</alwaysOn>
-        <updateRate>0.0</updateRate>
-        <cameraName>camera_rearDown_ir</cameraName>
-        <imageTopicName>/camera_rearDown/color/image_raw</imageTopicName>
-        <cameraInfoTopicName>/camera_rearDown/color/camera_info</cameraInfoTopicName>
-        <depthImageTopicName>/camera_rearDown/depth/image_raw</depthImageTopicName>
-        <depthImageInfoTopicName>/camera_rearDown/depth/camera_info</depthImageInfoTopicName>
-        <!-- <pointCloudTopicName>/camera_${name}/depth/points</pointCloudTopicName> -->
-        <pointCloudTopicName>/cam5/point_cloud_rearDown</pointCloudTopicName>
-        <frameName>camera_optical_rearDown</frameName>
-        <pointCloudCutoff>0.1</pointCloudCutoff>
-        <pointCloudCutoffMax>1.5</pointCloudCutoffMax>
-        <distortionK1>0.0</distortionK1>
-        <distortionK2>0.0</distortionK2>
-        <distortionK3>0.0</distortionK3>
-        <distortionT1>0.0</distortionT1>
-        <distortionT2>0.0</distortionT2>
-        <CxPrime>0</CxPrime>
-        <Cx>0.0045</Cx>
-        <Cy>0.0039</Cy>
-        <focalLength>0</focalLength>
-        <hackBaseline>0</hackBaseline>
-      </plugin>
-    </sensor>
-  </gazebo>
-  <joint name="camera_laserscan_joint_left" type="fixed">
-    <origin rpy="0 0.2618 0" xyz="0 0 0"/>
-    <parent link="camera_left"/>
-    <child link="camera_laserscan_link_left"/>
-  </joint>
-  <link name="camera_laserscan_link_left">
-    </link>
-  <joint name="camera_laserscan_joint_right" type="fixed">
-    <origin rpy="0 0.2618 0" xyz="0 0 0"/>
-    <parent link="camera_right"/>
-    <child link="camera_laserscan_link_right"/>
-  </joint>
-  <link name="camera_laserscan_link_right">
-    </link>
-  <joint name="ultraSound_joint_left" type="fixed">
-    <origin rpy="0 0.2618 1.5707963267948966" xyz="-0.0535  0.0826 0.00868"/>
-    <parent link="trunk"/>
-    <child link="ultraSound_left"/>
-  </joint>
-  <link name="ultraSound_left">
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <box size=".001 .001 .001"/>
-      </geometry>
-    </collision>
-    <visual>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/ultraSound.dae" scale="1 1 1"/>
-      </geometry>
-      <material name="black"/>
-    </visual>
-    <inertial>
-      <mass value="1e-5"/>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
-    </inertial>
-  </link>
-  <joint name="ultraSound_joint_right" type="fixed">
-    <origin rpy="0 0.2618 -1.5707963267948966" xyz="-0.0535 -0.0826 0.00868"/>
-    <parent link="trunk"/>
-    <child link="ultraSound_right"/>
-  </joint>
-  <link name="ultraSound_right">
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <box size=".001 .001 .001"/>
-      </geometry>
-    </collision>
-    <visual>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/ultraSound.dae" scale="1 1 1"/>
-      </geometry>
-      <material name="black"/>
-    </visual>
-    <inertial>
-      <mass value="1e-5"/>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
-    </inertial>
-  </link>
-  <joint name="ultraSound_joint_face" type="fixed">
-    <origin rpy="0 0 0" xyz="0.2747 0.0 -0.0088"/>
-    <parent link="trunk"/>
-    <child link="ultraSound_face"/>
-  </joint>
-  <link name="ultraSound_face">
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <box size=".001 .001 .001"/>
-      </geometry>
-    </collision>
-    <visual>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/ultraSound.dae" scale="1 1 1"/>
-      </geometry>
-      <material name="black"/>
-    </visual>
-    <inertial>
-      <mass value="1e-5"/>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
-    </inertial>
-  </link>
 </robot>
 

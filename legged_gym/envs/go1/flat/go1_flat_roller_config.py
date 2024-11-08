@@ -32,10 +32,8 @@ from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobot
 
 class Go1FlatRollerCfg( LeggedRobotCfg ):
     class env( LeggedRobotCfg.env ):
-        num_envs = 1
         num_observations = 49
         num_actions = 12
-
   
     class terrain( LeggedRobotCfg.terrain ):
         mesh_type = 'plane' # "heightfield" # none, plane, heightfield or trimesh
@@ -50,9 +48,9 @@ class Go1FlatRollerCfg( LeggedRobotCfg ):
         resampling_time = 4. # time before command are changed[s]
         heading_command = False # if true: compute ang vel command from heading error
         class ranges( LeggedRobotCfg.commands.ranges ):
-            lin_vel_x = [0., 0.] # min max [m/s]
-            lin_vel_y = [0., 0.]   # min max [m/s]
-            ang_vel_yaw = [0., 0.]    # min max [rad/s]
+            lin_vel_x = [-1.0, 1.0] # min max [m/s]
+            lin_vel_y = [-1.0, 1.0]   # min max [m/s]
+            ang_vel_yaw = [-1.0, 1.0]    # min max [rad/s]
             # # heading = [-3.14, 3.14]
     
     class init_state( LeggedRobotCfg.init_state ):
@@ -101,6 +99,7 @@ class Go1FlatRollerCfg( LeggedRobotCfg ):
         default_dof_drive_mode = 3 # see GymDofDriveModeFlags (0 is none, 1 is pos tgt, 2 is vel tgt, 3 effort)
         self_collisions = 0 # 1 to disable, 0 to enable...bitwise filter
         replace_cylinder_with_capsule = True # replace collision cylinders with capsules, leads to faster/more stable simulation
+        flip_visual_attachments = False # Some .obj meshes must be flipped from y-up to z-up
 
     class domain_rand( LeggedRobotCfg.domain_rand ):
         randomize_friction = True

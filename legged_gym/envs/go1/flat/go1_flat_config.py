@@ -33,6 +33,7 @@ from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobot
 class Go1FlatCfg( LeggedRobotCfg ):
     class env( LeggedRobotCfg.env ):
         num_observations = 49
+        num_actions = 12
   
     class terrain( LeggedRobotCfg.terrain ):
         mesh_type = 'plane' # "heightfield" # none, plane, heightfield or trimesh
@@ -92,6 +93,7 @@ class Go1FlatCfg( LeggedRobotCfg ):
         default_dof_drive_mode = 3 # see GymDofDriveModeFlags (0 is none, 1 is pos tgt, 2 is vel tgt, 3 effort)
         self_collisions = 0 # 1 to disable, 0 to enable...bitwise filter
         replace_cylinder_with_capsule = True # replace collision cylinders with capsules, leads to faster/more stable simulation
+        flip_visual_attachments = False # Some .obj meshes must be flipped from y-up to z-up
 
     class domain_rand( LeggedRobotCfg.domain_rand ):
         randomize_friction = True
