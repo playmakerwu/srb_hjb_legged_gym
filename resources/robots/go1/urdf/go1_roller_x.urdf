@@ -116,7 +116,7 @@
       <geometry>
         <mesh filename="../meshes/hip.stl" scale="1 1 1"/>
       </geometry>
-      <material name="sliver"/>
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="1.5707963267948966 0 0" xyz="0 -0.08 0"/>
