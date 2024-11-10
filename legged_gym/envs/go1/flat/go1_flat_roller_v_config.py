@@ -81,7 +81,7 @@ class Go1FlatRollerVCfg( LeggedRobotCfg ):
         # PD Drive parameters:
         control_type = 'P'
         stiffness = {'joint': 20., 'hinge': 0.}  # [N*m/rad]
-        damping = {'joint': 0.5, 'hinge': 0.0005}     # [N*m*s/rad]
+        damping = {'joint': 0.5, 'hinge': 0.}     # [N*m*s/rad]
         passive_dof_name_keywords = ['hinge']
         # action scale: target angle = actionScale * action + defaultAngle
         action_scale = 0.25
@@ -130,6 +130,7 @@ class Go1FlatRollerVCfg( LeggedRobotCfg ):
              
             feet_air_time = 0.0
             low_feet_antislip = -0.
+            low_roller_y_antislip = -0.1
             collision = -1.
             dof_pos_limits = -10.0
             # feet_stumble = -0.0 
@@ -180,7 +181,7 @@ class Go1FlatRollerVCfgPPO( LeggedRobotCfgPPO ):
         activation = 'elu' # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
 
     class runner ( LeggedRobotCfgPPO.runner):
-        run_name = ''
         experiment_name = 'go1_flat_roller_v'
+        run_name = ''
         # load_run = -1
         # max_iterations = 300

@@ -966,8 +966,17 @@ class LeggedRobot(BaseTask):
         # NOTE: currently "tangential" is defined as v_xy for simplicity, may not work for steep slope
         # NOTE: currently "h_ft" is defined as z_ft - foot_radius, so ONLY works for flat terrain
         
-        return torch.sum(torch.sigmoid(self._get_minus_c_h_ft(self.rigid_body_states[self.foot_ids_rgd_bdy_state, 2])).view(self.num_envs, 4) \
-                         * self.rigid_body_states[self.foot_ids_rgd_bdy_state, 7:9].square().sum(dim=1).view(self.num_envs, 4), dim=1)
+        return torch.sum(torch.sigmoid(self._get_minus_c_h_ft(self.rigid_body_states_envwise[:, self.feet_indices, 2])) \
+                         * self.rigid_body_states_envwise[:, self.feet_indices, 7:9].square().sum(dim=2), dim=1)
+
+    def _reward_low_roller_y_antislip(self):
+        # Penalize roller local frame y velocity(assuming y is axial direc) when roller height is low
+        # NOTE: use local frame y velocity to approx. the tangential velocity in the axial-gnd-aligned direction
+        # NOTE: all limitations of _reward_low_feet_antislip apply here
+        
+        return torch.sum(torch.sigmoid(self._get_minus_c_h_ft(self.rigid_body_states_envwise[:, self.feet_indices, 2])) \
+                         * quat_rotate_inverse(self.rigid_body_states_envwise[:, self.feet_indices, 3:7].view(-1,4),
+                                               self.rigid_body_states_envwise[:, self.feet_indices, 7:10].view(-1,3))[:,1].view(self.num_envs, len(self.feet_indices)).square(), dim=1)
     
     def _reward_stumble(self):
         # Penalize feet hitting vertical surfaces

@@ -174,7 +174,7 @@ class Go1FlatCfgPPO( LeggedRobotCfgPPO ):
         activation = 'elu' # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
 
     class runner ( LeggedRobotCfgPPO.runner):
-        run_name = ''
         experiment_name = 'go1_flat'
+        run_name = ''
         # load_run = -1
         # max_iterations = 300
