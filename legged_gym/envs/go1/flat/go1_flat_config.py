@@ -98,9 +98,9 @@ class Go1FlatCfg( LeggedRobotCfg ):
     class domain_rand( LeggedRobotCfg.domain_rand ):
         randomize_friction = True
         friction_range = [0.5, 1.25]
-        randomize_base_mass = True
+        randomize_base_mass = False
         added_mass_range = [-1., 1.]
-        randomize_base_com_pos = True
+        randomize_base_com_pos = False
         added_com_pos_range = [0.03, 0.02, 0.]  # [m], x, y, z amplitude
         push_robots = True
         push_interval_s = 4
