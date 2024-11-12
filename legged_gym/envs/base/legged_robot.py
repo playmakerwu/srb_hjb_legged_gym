@@ -729,12 +729,6 @@ class LeggedRobot(BaseTask):
         for i in range(len(feet_names)):
             self.feet_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], feet_names[i])
 
-        self.foot_ids_rgd_bdy_state = []
-        for env_id in range(self.num_envs):
-            for name in feet_names:
-                foot_id = self.gym.find_actor_rigid_body_index(self.envs[env_id], self.actor_handles[env_id], name, gymapi.DOMAIN_SIM)
-                self.foot_ids_rgd_bdy_state.append(foot_id)
-
         self.penalised_contact_indices = torch.zeros(len(penalized_contact_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i in range(len(penalized_contact_names)):
             self.penalised_contact_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], penalized_contact_names[i])
