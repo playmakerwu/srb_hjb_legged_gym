@@ -1,0 +1,3 @@
+[submodule "resources/robots/go1_model"]
+	path = resources/robots/go1_model
+	url = https://github.com/hwang-warren/go1_model.git

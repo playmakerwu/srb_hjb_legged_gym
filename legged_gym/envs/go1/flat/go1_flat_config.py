@@ -83,7 +83,7 @@ class Go1FlatCfg( LeggedRobotCfg ):
         decimation = 4
   
     class asset( LeggedRobotCfg.asset ):
-        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/go1/urdf/go1.urdf'
+        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/go1_model/urdf/go1_simplified_stl.urdf'
         name = "go1"
         foot_name = "foot"
         penalize_contacts_on = ["thigh", "calf"]
@@ -92,7 +92,7 @@ class Go1FlatCfg( LeggedRobotCfg ):
         collapse_fixed_joints = True # merge bodies connected by fixed joints. Specific fixed joints can be kept by adding " <... dont_collapse="true">
         default_dof_drive_mode = 3 # see GymDofDriveModeFlags (0 is none, 1 is pos tgt, 2 is vel tgt, 3 effort)
         self_collisions = 0 # 1 to disable, 0 to enable...bitwise filter
-        replace_cylinder_with_capsule = True # replace collision cylinders with capsules, leads to faster/more stable simulation
+        replace_cylinder_with_capsule = False # replace collision cylinders with capsules, leads to faster/more stable simulation
         flip_visual_attachments = False # Some .obj meshes must be flipped from y-up to z-up
 
     class domain_rand( LeggedRobotCfg.domain_rand ):
