@@ -143,7 +143,7 @@ class LeggedRobot(BaseTask):
         self.reset_buf = torch.any(torch.norm(self.contact_forces[:, self.termination_contact_indices, :], dim=-1) > 1., dim=1)
         
         if(self.enable_termination_by_height):
-            self.termination_by_height_buf = torch.any(self.rigid_body_states_envwise[:, self.termination_by_height_indices, 2] < self.termination_by_height_min_heights, dim=1)
+            self.termination_by_height_buf = torch.any(self.rigid_body_states[:, self.termination_by_height_indices, 2] < self.termination_by_height_min_heights, dim=1)
             self.reset_buf |= self.termination_by_height_buf
 
         self.time_out_buf = self.episode_length_buf > self.max_episode_length # no terminal reward for time-outs
@@ -511,8 +511,7 @@ class LeggedRobot(BaseTask):
         # create some wrapper tensors for different slices
         self.root_states = gymtorch.wrap_tensor(actor_root_state)
         self.dof_state = gymtorch.wrap_tensor(dof_state_tensor)
-        self.rigid_body_states = gymtorch.wrap_tensor(rigid_body_states)
-        self.rigid_body_states_envwise = gymtorch.wrap_tensor(rigid_body_states).view(self.num_envs, -1, 13)
+        self.rigid_body_states = gymtorch.wrap_tensor(rigid_body_states).view(self.num_envs, -1, 13)
         self.dof_pos = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 0]
         self.dof_vel = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 1]
         self.base_quat = self.root_states[:, 3:7]
@@ -966,17 +965,17 @@ class LeggedRobot(BaseTask):
         # NOTE: currently "tangential" is defined as v_xy for simplicity, may not work for steep slope
         # NOTE: currently "h_ft" is defined as z_ft - foot_radius, so ONLY works for flat terrain
         
-        return torch.sum(torch.sigmoid(self._get_minus_c_h_ft(self.rigid_body_states_envwise[:, self.feet_indices, 2])) \
-                         * self.rigid_body_states_envwise[:, self.feet_indices, 7:9].square().sum(dim=2), dim=1)
+        return torch.sum(torch.sigmoid(self._get_minus_c_h_ft(self.rigid_body_states[:, self.feet_indices, 2])) \
+                         * self.rigid_body_states[:, self.feet_indices, 7:9].square().sum(dim=2), dim=1)
 
     def _reward_low_roller_y_antislip(self):
         # Penalize roller local frame y velocity(assuming y is axial direc) when roller height is low
         # NOTE: use local frame y velocity to approx. the tangential velocity in the axial-gnd-aligned direction
         # NOTE: all limitations of _reward_low_feet_antislip apply here
         
-        return torch.sum(torch.sigmoid(self._get_minus_c_h_ft(self.rigid_body_states_envwise[:, self.feet_indices, 2])) \
-                         * quat_rotate_inverse(self.rigid_body_states_envwise[:, self.feet_indices, 3:7].view(-1,4),
-                                               self.rigid_body_states_envwise[:, self.feet_indices, 7:10].view(-1,3))[:,1].view(self.num_envs, len(self.feet_indices)).square(), dim=1)
+        return torch.sum(torch.sigmoid(self._get_minus_c_h_ft(self.rigid_body_states[:, self.feet_indices, 2])) \
+                         * quat_rotate_inverse(self.rigid_body_states[:, self.feet_indices, 3:7].view(-1,4),
+                                               self.rigid_body_states[:, self.feet_indices, 7:10].view(-1,3))[:,1].view(self.num_envs, len(self.feet_indices)).square(), dim=1)
     
     def _reward_stumble(self):
         # Penalize feet hitting vertical surfaces
