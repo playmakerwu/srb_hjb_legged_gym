@@ -106,7 +106,7 @@ class Go1FlatCfg( LeggedRobotCfg ):
         added_mass_range = [-1., 1.]
         randomize_base_com_pos = False
         added_com_pos_range = [0.03, 0.02, 0.]  # [m], x, y, z amplitude
-        push_robots = True
+        push_robots = False
         push_interval_s = 4
         max_push_vel_xy = 2.
     
@@ -121,9 +121,9 @@ class Go1FlatCfg( LeggedRobotCfg ):
             orientation = -5.
             base_height = -5.
 
-            torques = -0.00001
+            torques = -0.  # ETH -1.e-5, MinTorqOnly: -1.e-3
             # dof_vel = -0.
-            dof_acc = -2.5e-7
+            dof_acc = -0.  # ETH -2.5e-7, MinAccOnly: -1.e-7, using ETH's is fine if needed
             action_rate = -0.01
              
             feet_air_time = 0.0
@@ -140,7 +140,7 @@ class Go1FlatCfg( LeggedRobotCfg ):
         soft_torque_limit = 1.
         base_height_target = 0.34
         max_contact_force = 100. # forces above this value are penalized
-        low_feet_antislip_sigmoid_stiffness = 30.
+        low_feet_antislip_sigmoid_stiffness = 90.
         foot_radius = 0.02  # [m]
     
     class normalization( LeggedRobotCfg.normalization ):
