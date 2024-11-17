@@ -29,7 +29,7 @@
 # Copyright (c) 2021 ETH Zurich, Nikita Rudin
 
 from legged_gym import LEGGED_GYM_ROOT_DIR, envs
-from time import time
+import time
 from warnings import WarningMessage
 import numpy as np
 import os
@@ -899,6 +899,10 @@ class LeggedRobot(BaseTask):
     def _reward_action_rate(self):
         # Penalize changes in actions
         return torch.sum(torch.square(self.last_actions - self.actions), dim=1)
+    
+    def _reward_power(self):
+        # Penalize power
+        return torch.sum(torch.square(self.torques[:, self.active_dof_indices] * self.dof_vel[:, self.active_dof_indices]), dim=1)
     
     def _reward_collision(self):
         # Penalize collisions on selected bodies

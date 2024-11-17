@@ -108,11 +108,11 @@ class Go1FlatRollerXCfg( LeggedRobotCfg ):
     class domain_rand( LeggedRobotCfg.domain_rand ):
         randomize_friction = True
         friction_range = [0.5, 1.25]
-        randomize_base_mass = True
+        randomize_base_mass = False
         added_mass_range = [-1., 1.]
-        randomize_base_com_pos = True
+        randomize_base_com_pos = False
         added_com_pos_range = [0.03, 0.02, 0.]  # [m], x, y, z amplitude
-        push_robots = True
+        push_robots = False
         push_interval_s = 4
         max_push_vel_xy = 2.
     
@@ -127,14 +127,15 @@ class Go1FlatRollerXCfg( LeggedRobotCfg ):
             orientation = -5.
             base_height = -5.
 
-            torques = -0.00001
+            torques = -0.  # ETH -1.e-5, MinTorqOnly: -1.e-3
             # dof_vel = -0.
-            dof_acc = -2.5e-7
-            action_rate = -0.01
+            dof_acc = -1.e-6  # ETH -2.5e-7, MinAccOnly: -1.e-6
+            action_rate = -0  # both ETH and mine is -0.01
+            power = -0.
              
             feet_air_time = 0.0
             low_feet_antislip = -0.
-            low_roller_y_antislip = -0.1
+            low_roller_y_antislip = -0.
             collision = -1.
             dof_pos_limits = -10.0
             # feet_stumble = -0.0 
@@ -147,7 +148,7 @@ class Go1FlatRollerXCfg( LeggedRobotCfg ):
         soft_torque_limit = 1.
         base_height_target = 0.34
         max_contact_force = 100. # forces above this value are penalized
-        low_feet_antislip_sigmoid_stiffness = 30.
+        low_feet_antislip_sigmoid_stiffness = 90.
         foot_radius = 0.023  # [m]
     
     class normalization( LeggedRobotCfg.normalization ):
