@@ -727,6 +727,15 @@ class LeggedRobot(BaseTask):
             self.envs.append(env_handle)
             self.actor_handles.append(actor_handle)
 
+        if 'vert_virt_leg' in self.reward_scales.keys():
+            if self.reward_scales['vert_virt_leg'] != 0:
+                vtx_names = [s for s in body_names if self.cfg.asset.virt_leg_upper_vtx_name in s]
+                if len(vtx_names) == 0:
+                    raise ValueError("No virtual leg upper vtx found when trying to include vert_virt_leg reward")
+                self.virtual_leg_upper_vtx_indices = []
+                for i in range(len(vtx_names)):
+                    self.virtual_leg_upper_vtx_indices.append(self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], vtx_names[i]))
+        
         self.feet_indices = torch.zeros(len(feet_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i in range(len(feet_names)):
             self.feet_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], feet_names[i])
@@ -903,6 +912,11 @@ class LeggedRobot(BaseTask):
     def _reward_power(self):
         # Penalize power
         return torch.sum(torch.square(self.torques[:, self.active_dof_indices] * self.dof_vel[:, self.active_dof_indices]), dim=1)
+    
+    def _reward_vert_virt_leg(self):
+        # Penalize virtual leg's deviation from vertical direction
+        return torch.sum(torch.square(self.rigid_body_states[:, self.feet_indices, :2]
+                                    - self.rigid_body_states[:, self.virtual_leg_upper_vtx_indices, :2]), dim=(1,2))
     
     def _reward_collision(self):
         # Penalize collisions on selected bodies

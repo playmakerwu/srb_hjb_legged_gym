@@ -92,6 +92,7 @@ class Go1FlatRollerXCfg( LeggedRobotCfg ):
         file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/go1_model/urdf/roller/x/go1_roller_x_simplified_stl.urdf'
         name = "go1"
         foot_name = "roller"
+        virt_leg_upper_vtx_name = "thigh"
         penalize_contacts_on = ["thigh", "calf"]
         terminate_after_contacts_on = ["base"]
         terminate_by_low_height = {'base': 0.13,
@@ -129,9 +130,11 @@ class Go1FlatRollerXCfg( LeggedRobotCfg ):
 
             torques = -0.  # ETH -1.e-5, MinTorqOnly: -1.e-3
             # dof_vel = -0.
-            dof_acc = -1.e-6  # ETH -2.5e-7, MinAccOnly: -1.e-6
-            action_rate = -0  # both ETH and mine is -0.01
+            dof_acc = -0.  # ETH -2.5e-7, MinAccOnly: -1.e-6
+            action_rate = -1.e-2  # both ETH and mine is -0.01
             power = -0.
+
+            vert_virt_leg = -4.
              
             feet_air_time = 0.0
             low_feet_antislip = -0.
