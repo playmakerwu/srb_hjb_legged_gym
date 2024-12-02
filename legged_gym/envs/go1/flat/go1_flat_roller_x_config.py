@@ -120,8 +120,12 @@ class Go1FlatRollerXCfg( LeggedRobotCfg ):
     class rewards( LeggedRobotCfg.rewards ):
         class scales( LeggedRobotCfg.rewards.scales ):
             # termination = -0.0
-            tracking_lin_vel = 1.0
-            tracking_ang_vel = 0.5
+            tracking_lin_vel = 0.
+            tracking_ang_vel = 0.
+            tracking_lin_vel_x_exp = 0.5
+            tracking_lin_vel_y_exp = 0.5
+            tracking_ang_vel_z_exp = 0.5
+
             lin_vel_z = -2.0
             ang_vel_xy = -0.05
             
@@ -146,6 +150,9 @@ class Go1FlatRollerXCfg( LeggedRobotCfg ):
 
         only_positive_rewards = True # if true negative total rewards are clipped at zero (avoids early termination problems)
         tracking_sigma = 0.25 # tracking reward = exp(-error^2/sigma)
+        tracking_sigma_vx = 0.25
+        tracking_sigma_vy = 0.25
+        tracking_sigma_wz = 0.25
         soft_dof_pos_limit = 1. # percentage of urdf limits, values above this limit are penalized
         soft_dof_vel_limit = 1.
         soft_torque_limit = 1.
