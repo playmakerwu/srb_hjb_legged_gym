@@ -47,9 +47,9 @@ def play(args):
     env_cfg.terrain.num_cols = 5
     env_cfg.terrain.curriculum = False
     env_cfg.noise.add_noise = False
-    env_cfg.domain_rand.randomize_friction = False
-    env_cfg.domain_rand.randomize_base_mass = False
-    env_cfg.domain_rand.randomize_base_com_pos = False
+    # env_cfg.domain_rand.randomize_friction = False
+    # env_cfg.domain_rand.randomize_base_mass = False
+    # env_cfg.domain_rand.randomize_base_com_pos = False
     # env_cfg.domain_rand.push_robots = False
 
     # prepare environment
@@ -94,7 +94,18 @@ def play(args):
                     'dof_pos_target': actions[robot_index, joint_index].item() * env.cfg.control.action_scale,
                     'dof_pos': env.dof_pos[robot_index, joint_index].item(),
                     'dof_vel': env.dof_vel[robot_index, joint_index].item(),
-                    'dof_torque': env.torques[robot_index, joint_index].item(),
+                    'dof_torque_FL_hip': env.torques[robot_index, 0].item(),
+                    'dof_torque_FL_thigh': env.torques[robot_index, 1].item(),
+                    'dof_torque_FL_calf': env.torques[robot_index, 2].item(),
+                    'dof_torque_FR_hip': env.torques[robot_index, 3].item(),
+                    'dof_torque_FR_thigh': env.torques[robot_index, 4].item(),
+                    'dof_torque_FR_calf': env.torques[robot_index, 5].item(),
+                    'dof_torque_RL_hip': env.torques[robot_index, 6].item(),
+                    'dof_torque_RL_thigh': env.torques[robot_index, 7].item(),
+                    'dof_torque_RL_calf': env.torques[robot_index, 8].item(),
+                    'dof_torque_RR_hip': env.torques[robot_index, 9].item(),
+                    'dof_torque_RR_thigh': env.torques[robot_index, 10].item(),
+                    'dof_torque_RR_calf': env.torques[robot_index, 11].item(),
                     'command_x': env.commands[robot_index, 0].item(),
                     'command_y': env.commands[robot_index, 1].item(),
                     'command_yaw': env.commands[robot_index, 2].item(),
@@ -105,6 +116,10 @@ def play(args):
                     'contact_forces_z': env.contact_forces[robot_index, env.feet_indices, 2].cpu().numpy()
                 }
             )
+            if hasattr(env, 'mech_power'):
+                logger.log_states({'mech_power': env.mech_power[robot_index].item()})
+            if hasattr(env, 'cost_of_transport'):
+                logger.log_states({'cost_of_transport': env.cost_of_transport[robot_index].item()})
         elif i==stop_state_log:
             logger.plot_states()
         if  0 < i < stop_rew_log:

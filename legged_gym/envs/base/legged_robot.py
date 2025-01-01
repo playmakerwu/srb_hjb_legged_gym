@@ -122,7 +122,7 @@ class LeggedRobot(BaseTask):
 
         self._post_physics_step_callback()
 
-        # compute observations, rewards, resets, ...
+        # compute rewards, resets, ...
         self.check_termination()
         self.compute_reward()
         env_ids = self.reset_buf.nonzero(as_tuple=False).flatten()
@@ -946,10 +946,25 @@ class LeggedRobot(BaseTask):
         lin_vel_error = torch.sum(torch.square(self.commands[:, :2] - self.base_lin_vel[:, :2]), dim=1)
         return torch.exp(-lin_vel_error/self.cfg.rewards.tracking_sigma)
     
+    def _reward_tracking_lin_vel_x_exp(self):
+        # Tracking of linear velocity commands (x axes)
+        x_vel_error = torch.square(self.commands[:, 0] - self.base_lin_vel[:, 0])
+        return torch.exp(-x_vel_error/self.cfg.rewards.tracking_sigma_vx)
+    
+    def _reward_tracking_lin_vel_y_exp(self):
+        # Tracking of linear velocity commands (y axes)
+        y_vel_error = torch.square(self.commands[:, 1] - self.base_lin_vel[:, 1])
+        return torch.exp(-y_vel_error/self.cfg.rewards.tracking_sigma_vy)
+    
     def _reward_tracking_ang_vel(self):
         # Tracking of angular velocity commands (yaw) 
         ang_vel_error = torch.square(self.commands[:, 2] - self.base_ang_vel[:, 2])
         return torch.exp(-ang_vel_error/self.cfg.rewards.tracking_sigma)
+    
+    def _reward_tracking_ang_vel_z_exp(self):
+        # Tracking of angular velocity commands (yaw) 
+        ang_vel_error = torch.square(self.commands[:, 2] - self.base_ang_vel[:, 2])
+        return torch.exp(-ang_vel_error/self.cfg.rewards.tracking_sigma_wz)
 
     def _reward_feet_air_time(self):
         # Reward long steps

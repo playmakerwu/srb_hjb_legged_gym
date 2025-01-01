@@ -46,7 +46,8 @@ def train(env_cfg: LeggedRobotCfg, train_cfg: LeggedRobotCfgPPO, task_class, sim
     # make alg runner
     train_cfg_dict = class_to_dict(train_cfg)
     log_root = os.path.join(LEGGED_GYM_ROOT_DIR, 'logs', train_cfg.runner.experiment_name)
-    log_dir = os.path.join(log_root, datetime.now().strftime('%b%d_%H-%M-%S') + '_' + train_cfg.runner.run_name)  
+    # log_dir = os.path.join(log_root, datetime.now().strftime('%b%d_%H-%M-%S') + '_' + train_cfg.runner.run_name)  
+    log_dir = os.path.join(log_root, train_cfg.runner.run_name) 
     ppo_runner = OnPolicyRunner(env, train_cfg_dict, log_dir, device=args.rl_device)
     
     # train

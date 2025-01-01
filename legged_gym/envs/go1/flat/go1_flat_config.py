@@ -86,6 +86,7 @@ class Go1FlatCfg( LeggedRobotCfg ):
         file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/go1_model/urdf/go1_simplified_stl.urdf'
         name = "go1"
         foot_name = "foot"
+        virt_leg_upper_vtx_name = "thigh"
         penalize_contacts_on = ["thigh", "calf"]
         terminate_after_contacts_on = ["base"]
         terminate_by_low_height = {'base': 0.13, 
@@ -113,8 +114,11 @@ class Go1FlatCfg( LeggedRobotCfg ):
     class rewards( LeggedRobotCfg.rewards ):
         class scales( LeggedRobotCfg.rewards.scales ):
             # termination = -0.0
-            tracking_lin_vel = 1.0
-            tracking_ang_vel = 0.5
+            tracking_lin_vel = 0.
+            tracking_ang_vel = 0.
+            tracking_lin_vel_x_exp = 1.
+            tracking_lin_vel_y_exp = 1.
+            tracking_ang_vel_z_exp = 1.
             lin_vel_z = -2.0
             ang_vel_xy = -0.05
             
@@ -126,6 +130,8 @@ class Go1FlatCfg( LeggedRobotCfg ):
             dof_acc = -0.  # ETH -2.5e-7, MinAccOnly: -1.e-7, using ETH's is fine if needed
             action_rate = -0.01
             power = -0.
+
+            vert_virt_leg = -4.
              
             feet_air_time = 0.0
             low_feet_antislip = -0.1
@@ -136,6 +142,9 @@ class Go1FlatCfg( LeggedRobotCfg ):
 
         only_positive_rewards = True # if true negative total rewards are clipped at zero (avoids early termination problems)
         tracking_sigma = 0.25 # tracking reward = exp(-error^2/sigma)
+        tracking_sigma_vx = 0.25
+        tracking_sigma_vy = 0.25
+        tracking_sigma_wz = 0.25
         soft_dof_pos_limit = 1. # percentage of urdf limits, values above this limit are penalized
         soft_dof_vel_limit = 1.
         soft_torque_limit = 1.
