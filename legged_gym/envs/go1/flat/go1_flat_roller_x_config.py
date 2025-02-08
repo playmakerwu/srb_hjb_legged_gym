@@ -136,7 +136,6 @@ class Go1FlatRollerXCfg( LeggedRobotCfg ):
             # dof_vel = -0.
             dof_acc = -0.  # ETH -2.5e-7, MinAccOnly: -1.e-6
             action_rate = -1.e-2  # both ETH and mine is -0.01
-            power = -0.
 
             vert_virt_leg = -4.
              

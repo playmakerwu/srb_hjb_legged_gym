@@ -129,7 +129,6 @@ class Go1FlatCfg( LeggedRobotCfg ):
             # dof_vel = -0.
             dof_acc = -0.  # ETH -2.5e-7, MinAccOnly: -1.e-7, using ETH's is fine if needed
             action_rate = -0.01
-            power = -0.
 
             vert_virt_leg = -4.
              

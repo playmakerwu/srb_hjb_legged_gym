@@ -909,10 +909,6 @@ class LeggedRobot(BaseTask):
         # Penalize changes in actions
         return torch.sum(torch.square(self.last_actions - self.actions), dim=1)
     
-    def _reward_power(self):
-        # Penalize power
-        return torch.sum(torch.square(self.torques[:, self.active_dof_indices] * self.dof_vel[:, self.active_dof_indices]), dim=1)
-    
     def _reward_vert_virt_leg(self):
         # Penalize virtual leg's deviation from vertical direction
         return torch.sum(torch.square(self.rigid_body_states[:, self.feet_indices, :2]
