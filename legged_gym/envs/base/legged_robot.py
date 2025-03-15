@@ -311,6 +311,13 @@ class LeggedRobot(BaseTask):
                 r = self.dof_pos_limits[i, 1] - self.dof_pos_limits[i, 0]
                 self.dof_pos_limits[i, 0] = m - 0.5 * r * self.cfg.rewards.soft_dof_pos_limit
                 self.dof_pos_limits[i, 1] = m + 0.5 * r * self.cfg.rewards.soft_dof_pos_limit
+        
+        if self.cfg.domain_rand.randomize_joint_armature:
+            rng = self.cfg.domain_rand.added_joint_armature_range
+            props["armature"][:] = self.nonrand_joint_armature + np.random.uniform(-rng, rng, len(props))
+        else:
+            props["armature"][:] = self.nonrand_joint_armature
+
         return props
 
     def _process_rigid_body_props(self, props, env_id):
@@ -676,7 +683,8 @@ class LeggedRobot(BaseTask):
         asset_options.linear_damping = self.cfg.asset.linear_damping
         asset_options.max_angular_velocity = self.cfg.asset.max_angular_velocity
         asset_options.max_linear_velocity = self.cfg.asset.max_linear_velocity
-        asset_options.armature = self.cfg.asset.armature
+        asset_options.armature = self.cfg.asset.armature  # not joint armature. The value added to all links' inertia diagonals
+                                                          # use self.cfg.asset.joint_armature for joint armature
         asset_options.thickness = self.cfg.asset.thickness
         asset_options.disable_gravity = self.cfg.asset.disable_gravity
 
@@ -698,6 +706,14 @@ class LeggedRobot(BaseTask):
         termination_contact_names = []
         for name in self.cfg.asset.terminate_after_contacts_on:
             termination_contact_names.extend([s for s in body_names if name in s])
+        
+        # store joint armatures, will be used in self._process_dof_props to assign armatures to joint props
+        self.nonrand_joint_armature = np.zeros(self.num_dofs)  # default joint armature is 0
+        for i in range(self.num_dofs):
+            for dof_name_keyword in self.cfg.asset.joint_armature.keys():
+                if dof_name_keyword in self.dof_names[i]:
+                    self.nonrand_joint_armature[i] = self.cfg.asset.joint_armature[dof_name_keyword]
+                    break
 
         base_init_state_list = self.cfg.init_state.pos + self.cfg.init_state.rot + self.cfg.init_state.lin_vel + self.cfg.init_state.ang_vel
         self.base_init_state = to_torch(base_init_state_list, device=self.device, requires_grad=False)

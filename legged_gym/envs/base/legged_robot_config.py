@@ -117,7 +117,8 @@ class LeggedRobotCfg(BaseConfig):
         linear_damping = 0.
         max_angular_velocity = 1000.
         max_linear_velocity = 1000.
-        armature = 0.
+        armature = 0.  # not joint armature. The value added to all links' inertia diagonals. Could improve simulation stability
+        joint_armature = {}  # joint armature, dict format {'joint_name': joint_armature}, empty dict means all 0
         thickness = 0.01
 
     class domain_rand:
@@ -125,9 +126,13 @@ class LeggedRobotCfg(BaseConfig):
         friction_range = [0.5, 1.25]
         randomize_base_mass = False
         added_mass_range = [-1., 1.]
+        randomize_base_com_pos = False
+        added_com_pos_range = [0., 0., 0.]  # [m], x, y, z amplitude
         push_robots = True
         push_interval_s = 15
         max_push_vel_xy = 1.
+        randomize_joint_armature = False
+        added_joint_armature_range = 0.
 
     class rewards:
         class scales:
