@@ -105,6 +105,19 @@ class Go1FlatRollerXCfg( LeggedRobotCfg ):
         self_collisions = 0 # 1 to disable, 0 to enable...bitwise filter
         replace_cylinder_with_capsule = False # replace collision cylinders with capsules, leads to faster/more stable simulation
         flip_visual_attachments = False # Some .obj meshes must be flipped from y-up to z-up
+        armature = 0.  # not joint armature. The value added to all links' inertia diagonals. Could improve simulation stability
+        joint_armature = {'FR_hip_joint':   0.02,
+                          'FL_hip_joint':   0.02,
+                          'RR_hip_joint':   0.02,
+                          'RL_hip_joint':   0.02,
+                          'FR_thigh_joint': 0.02,
+                          'FL_thigh_joint': 0.02,
+                          'RR_thigh_joint': 0.02,
+                          'RL_thigh_joint': 0.02,
+                          'FR_calf_joint':  0.02,
+                          'FL_calf_joint':  0.02,
+                          'RR_calf_joint':  0.02,
+                          'RL_calf_joint':  0.02}
 
     class domain_rand( LeggedRobotCfg.domain_rand ):
         randomize_friction = True
@@ -116,15 +129,17 @@ class Go1FlatRollerXCfg( LeggedRobotCfg ):
         push_robots = False
         push_interval_s = 4
         max_push_vel_xy = 2.
+        randomize_joint_armature = False
+        added_joint_armature_range = 0.01
     
     class rewards( LeggedRobotCfg.rewards ):
         class scales( LeggedRobotCfg.rewards.scales ):
             # termination = -0.0
             tracking_lin_vel = 0.
             tracking_ang_vel = 0.
-            tracking_lin_vel_x_exp = 1.
-            tracking_lin_vel_y_exp = 1.
-            tracking_ang_vel_z_exp = 1.
+            tracking_lin_vel_x_exp = 0.5
+            tracking_lin_vel_y_exp = 0.5
+            tracking_ang_vel_z_exp = 0.5
 
             lin_vel_z = -2.0
             ang_vel_xy = -0.05
@@ -134,7 +149,7 @@ class Go1FlatRollerXCfg( LeggedRobotCfg ):
 
             torques = -0.  # ETH -1.e-5, MinTorqOnly: -1.e-3
             # dof_vel = -0.
-            dof_acc = -0.  # ETH -2.5e-7, MinAccOnly: -1.e-6
+            dof_acc = -1.e-8  # ETH -2.5e-7, MinAccOnly: -1.e-6
             action_rate = -1.e-2  # both ETH and mine is -0.01
 
             vert_virt_leg = -4.

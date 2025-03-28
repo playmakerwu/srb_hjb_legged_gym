@@ -131,9 +131,9 @@ class Go1FlatCfg( LeggedRobotCfg ):
             # termination = -0.0
             tracking_lin_vel = 0.
             tracking_ang_vel = 0.
-            tracking_lin_vel_x_exp = 1.
-            tracking_lin_vel_y_exp = 1.
-            tracking_ang_vel_z_exp = 1.
+            tracking_lin_vel_x_exp = 0.5
+            tracking_lin_vel_y_exp = 0.5
+            tracking_ang_vel_z_exp = 0.5
             lin_vel_z = -2.0
             ang_vel_xy = -0.05
             
