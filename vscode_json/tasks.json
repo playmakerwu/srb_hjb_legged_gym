@@ -1,0 +1,849 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {   "label": "play go1_rough",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "legged_gym/scripts/play.py",
+                "--task=go1_rough",
+                "--experiment_name=0_Round_0/go1_rough",
+                "--checkpoint=1500",
+                // "--load_run=1_success_no_rotor_no_trans_b62ba15053f59db944d079b1e",
+                // "--load_run=2_1_terrain_height_bias_use_base_height_target_c294c381f84c8a0786987e33",
+                // "--load_run=3_2_5000iter",
+                // "--load_run=4_3_rmv_feet_air_time_rwd",
+                // "--load_run=8_4_VertVirtLegReg3",
+                // "--load_run=9_4_VertVirtLegReg3e-2",
+                "--load_run=10_4_VertVirtLegReg3e-4",
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/legged_gym"
+            },
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
+        },
+        {   "label": "play go1_flat_play",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "legged_gym/legged_gym/scripts/play.py",
+                "--task=go1_flat_play",
+                "--experiment_name=0_Round_0/go1_flat",
+                "--checkpoint=-1",
+                // ===================== rand rmv trial ========================
+                // "--load_run=6_SimpSTL_BaseMassComRand",
+                // "--load_run=6Opt_SimpSTL_NoBaseMassComRand_1d15a5b6d1600878a618ae33c4d",
+                // "--load_run=7_6Opt_NoPush",
+                // "--load_run=7_6Opt_NoFricRand",
+                // "--load_run=7_6Opt_NoFricRand_NoPush",
+                // ================= minimization rwd coeff opt =================
+                // ----------- torques only ------------
+                // "--load_run=8_6Opt_MinTorqOnly-1e-04",  // too small, one ft always in the air
+                // "--load_run=8Opt_6Opt_MinTorqOnly-1e-03",  // opt, feature: 1) step freq high; 2) ft tip right under motor
+                // "--load_run=8_6Opt_MinTorqOnly-1e-02",  // base 14.7cm above gnd escaping reset, fail to stand up
+                // "--load_run=8_8Opt_6Opt_TermInclThigh_MinTorqOnly-1e-03",  // still the opt, but tends to move 4 feet on-at-a-time in a very short time period
+                // "--load_run=8_8_6Opt_TermInclThigh_MinTorqOnly-1e-02",  // reset ok, but resulted in jerky noise
+                // ----------- dof_acc only ------------
+                // "--load_run=9_6Opt_MinDofAccOnly-1e-08",  // too small, either one ft always in the air or step freq too high
+                // "--load_run=9Opt_6Opt_MinDofAccOnly-1e-07",  // opt troting, step_freq is ok, ft a bit too high, and a bit inwards
+                // "--load_run=9_6Opt_MinDofAccOnly-1e-06",  // 4 ft jumping
+                // "--load_run=9_6Opt_MinDofAccOnly-1e-05",  // base 13-23cm above gnd escaping reset, fail to stand up
+                // "--load_run=9_6Opt_MinDofAccOnly-1e-04",  // can reset, but pure jerky noisy behavior
+                // "--load_run=9_9Opt_6Opt_TermInclThigh_MinDofAccOnly-1e-07",  // 1 ft always in the air
+                // "--load_run=9_9_6Opt_TermInclThigh_MinDofAccOnly-1e-06",  // 4 ft jumping
+                // "--load_run=9_9_6Opt_TermInclThigh_MinDofAccOnly-1e-05",  // can reset, but pure jerky noisy behavior
+                // ----------- action_rate only ------------
+                // "--load_run=10_6Opt_MinActionRateOnly-1e-04",
+                // "--load_run=10_6Opt_MinActionRateOnly-1e-03",
+                // "--load_run=10Opt_6Opt_MinActionRateOnly-1e-02",  // opt, step_freq is ok, ft a bit too high, and a bit inwards
+                // "--load_run=10_6Opt_MinActionRateOnly-1e-01",  // base 13-23cm above gnd escaping reset, fail to stand up
+                // "--load_run=10_6Opt_MinActionRateOnly-1",      // can reset, but pure jerky noisy behavior
+                // "--load_run=10_10Opt_6Opt_TermInclThigh_MinActionRateOnly-1e-02",  // still opt, but ft a bit too high, and hind left ft a bit inwards
+                // "--load_run=10_10_6Opt_TermInclThigh_MinActionRateOnly-1e-01",  // can reset, but pure jerky noisy behavior
+                // ------------- ft vel only ------------
+                // "--load_run=11_6Opt_TermInclThigh_MinBaseFeetRelVelOnly-1e-03",
+                // "--load_run=11_6Opt_TermInclThigh_MinBaseFeetRelVelOnly-1e-02",  // 1 ft in air
+                // "--load_run=11_6Opt_TermInclThigh_MinBaseFeetRelVelOnly-1e-01",  // bdy starts to get too low
+                // "--load_run=11_6Opt_TermInclThigh_MinBaseFeetRelVelOnly-1",      // refuse to move at all
+                // ================= things to improve =================
+                // 1. [solved] reset criteria: 1) base height(original); 2) thigh height(added); 3) calf height(may be too strict)
+                // 2. hip's torq, dof_acc, and action_rate is always the smallest, so ft inwards may be a sacrifice of hip, try task space min rwd may help
+                // 3. adding vertical virtual leg reg can also help prevent foot overly inwards / local asymmetric minima
+                // 4. low_feet_antislip steeper sigmoid and smaller coeff, (may need higher base height tracking cost to lift body up on hdw)
+                // 5. some noise may be too large, remember to add noise when playing to see the actual effect
+                // 6. base vx, vy, omg_z, height cost rel order of magnitude
+                // [Strategy]:
+                //     It seems that simply adding these three to the prev opt config can directly give you a good policy
+                //         1. tune feet antislip, both sigmoid stiffness and scaling coeff, to achieve the best performance in sim
+                //         2. add vertical virtual leg reg if foot inwards or asymmetry persists
+                //         3. tune vx, vy, omg_z, height cost rel order of magnitude
+                //     But before this, we want to reduce the amount of possibly redundant minimization rwd, and overly conservative domain randomization
+                //     because this together with later step 2 and 3 are meant to replace randomization with more concentrated regularization
+                //         1. with the reset issue in 1 solved, redo the above line search for scales above prev opt
+                //            also do a line search for task space vel min rwd
+                //         2. rmv push_robots and do a line search around opt
+                //         3. observe on hardware the noise level, and change the noise scale accordingly
+                //            do a line search around the opt again
+                //         4. after finding the new opt scale, try the above 3 steps for each of the opt, starting from the best perfroming one
+                //            Some noise can be too large, let it go at this stage, and reduce them whenever you see a persistent tracking error in sim / hdw
+                //            that can't be eliminated by the above 3 steps 
+                // ===================== min action_rate only & no push & [antislip scale tuning] ========================
+                // "--load_run=13_1010Opt_NoPush_AntiSlipScale-1e-2Stiff30",
+                // "--load_run=13_1010Opt_NoPush_AntiSlipScale-1e-2Stiff50",
+                // "--load_run=13_1010Opt_NoPush_AntiSlipScale-1e-2Stiff70",
+                // "--load_run=13Opt_1010Opt_NoPush_AntiSlipScale-1e-2Stiff90",
+                // "--load_run=13_1010Opt_NoPush_AntiSlipScale-1e-2Stiff110",
+                // "--load_run=15_13Opt_AntiSlipStiff90Scale-1e-04",
+                // "--load_run=15_13Opt_AntiSlipStiff90Scale-1e-03",
+                // "--load_run=15_13Opt_AntiSlipStiff90Scale-1e-02",
+                // "--load_run=15Opt_13Opt_AntiSlipStiff90Scale-1e-01",  // cur opt antislip stiffness-scale param
+                // "--load_run=15_13Opt_AntiSlipStiff90Scale-1",
+                // ================ trial reducing dof_vel noise and height_measurements noise, not used yet ================
+                // all can work, just see if these are needed
+                // "--load_run=14_13Opt_NoiseDofVel0.15",
+                // "--load_run=14_13Opt_NoiseHeightMeas0.05",
+                // "--load_run=14_13Opt_NoiseDofVel0.15HeightMeas0.05",
+                // ================= rerun minimization rwd scale search after optimizing antislip =================
+                // ----------- torques only ------------
+                // "--load_run=16_15Opt_MinTorqOnly-1e-04",     // step freq too high
+                // "--load_run=16Opt_15Opt_MinTorqOnly-1e-03",  // opt, but step freq still a bit too high
+                // "--load_run=16_15Opt_MinTorqOnly-1e-02",     // pure jerky noise
+                // ----------- dof_acc only ------------
+                // "--load_run=17_15Opt_MinDofAccOnly-1e-08",     // 1 ft always in air
+                // "--load_run=17Opt_15Opt_MinDofAccOnly-1e-07",  // opt
+                // "--load_run=17_15Opt_MinDofAccOnly-1e-06",     // 4 ft jumping
+                // "--load_run=17_15Opt_MinDofAccOnly-1e-05",     // pure jerky noise
+                // ----------- action_rate only ------------
+                // "--load_run=18_15Opt_MinActRateOnly-1e-04",
+                // "--load_run=18_15Opt_MinActRateOnly-1e-03",  // step freq too high, ft too high
+                // "--load_run=18Opt_15Opt_MinActRateOnly-1e-02",  // opt
+                // "--load_run=18_15Opt_MinActRateOnly-1e-01",  // pure jerky noise
+                // ------------- base_feet_rel_vel only ------------
+                // "--load_run=19_15Opt_MinBaseFeetRelVelOnly-1e-04",
+                // "--load_run=19_15Opt_MinBaseFeetRelVelOnly-1e-03",
+                // "--load_run=19_15Opt_MinBaseFeetRelVelOnly-1e-02",  // step freq too high, ft too high, maybe vz pen scale should be larger than v_xy pen
+                // "--load_run=19_15Opt_MinBaseFeetRelVelOnly-1e-01",  // body too low
+                // ------------------ power only ----------------
+                // "--load_run=20_15Opt_MinPowerOnly-1e-05",  // step freq only a tiny bit higher than opt
+                // "--load_run=20_15Opt_MinPowerOnly-1e-04",  // opt, but step freq still a bit too high
+                // "--load_run=20_15Opt_MinPowerOnly-1e-03",  // tends to not move
+                // ======================= separate vx & vy tracking based on 18Opt(min action rate only) =========================
+                // "--load_run=21_18Opt_VxScale0.1Sigma0.25_VyScale0.1Sigma0.25",  // [gait] pacing,   [walk fwd] graceful though xy vel tracking not good, [stand still] pacing,         [turn] good, pacing
+                // "--load_run=21_18Opt_VxScale0.3Sigma0.25_VyScale0.3Sigma0.25",  // [gait] pacing,   [walk fwd] vel tracking better than 0.1,             [stand still] pacing,         [turn] good, pacing
+                // "--load_run=21_18Opt_VxScale0.5Sigma0.25_VyScale0.5Sigma0.25",  // [gait] diagonal, [walk fwd] body tilt to left when moving fwd,        [stand still] slow diag trot, [turn] responds slow causing ft inwards
+                // "--load_run=21_18Opt_VxScale0.7Sigma0.25_VyScale0.7Sigma0.25",  // [gait] diagonal, [walk fwd] body not tilt but hind 2 legs inwards,    [stand still] slow diag trot, [turn] responds slow causing ft inwards
+                // "--load_run=21_18Opt_VxScale0.9Sigma0.25_VyScale0.9Sigma0.25",  // [gait] diagonal, [walk fwd] body not tilt but hind 2 legs inwards,    [stand still] not stepping,   [turn] responds slow causing ft inwards
+                // =================== twist exp tracking: vx, vy, wz same, starting from scale 1 sigma 0.25 ======================
+                // -------------- vary scale --------------
+                // "--load_run=22Opt_18Opt_TwistSepSame_Exp_Sigma0.25_Scale1.0"  // [gait] diag, [walk fwd] generally awesome, just ft a bit inwards, [stand still] troting, [turn] awesome
+                // "--load_run=22_18Opt_TwistSepSame_Exp_Sigma0.25_Scale1.5"  // [gait] gallop, [walk fwd] front leg too backwards, will fall down on hdw, [stand still] troting , [turn] not responsive
+                // "--load_run=22_18Opt_TwistSepSame_Exp_Sigma0.25_Scale2.0"  // [gait] one ft in air if fwd 1m/s, [walk fwd] , [stand still] , [turn]
+                // -------------- vary sigma --------------
+                // "--load_run=23_18Opt_TwistSepSame_Exp_Sigma0.1_Scale1.0"   // [gait] diagonal, [tracking curves] best, [stand still] stepping a bit
+                // "--load_run=23_18Opt_TwistSepSame_Exp_Sigma0.5_Scale1.0"   // [gait] gallop, [tracking curves] worse, [stand still] stepping
+                // "--load_run=23_18Opt_TwistSepSame_Exp_Sigma0.75_Scale1.0"  // [gait] a bit jerky gallop, [tracking curves] worst, [stand still] sdtepping
+                // ================== [all fail to converge] try twist quad penalty: vx, vy, wz same ===================
+                // "--load_run=24_18Opt_TwistSepSame_Quad-0.0001",  // fail to converge
+                // "--load_run=24_18Opt_TwistSepSame_Quad-0.001",   // fail to converge
+                // "--load_run=24_18Opt_TwistSepSame_Quad-0.01",    // fail to converge
+                // "--load_run=24_18Opt_TwistSepSame_Quad-0.1",     // fail to converge
+                // "--load_run=24_18Opt_TwistSepSame_Quad-0.5",     // fail to converge
+                // "--load_run=24_18Opt_TwistSepSame_Quad-1.0",     // fail to converge
+                // "--load_run=24_18Opt_TwistSepSame_Quad-5.0",     // fail to converge
+                // "--load_run=24_18Opt_TwistSepSame_Quad-10.0",    // fail to converge
+                // ================= Vel Exp Tracking starting from 22Opt twist all scale 1 sigma 0.25 =================
+                // ------------- only vary vy scale -------------
+                // "--load_run=25_22Opt_VyExpSca1.0Sig0.25",
+                // "--load_run=25_22Opt_VyExpSca1.5Sig0.25",
+                // "--load_run=25_22Opt_VyExpSca2.0Sig0.25",
+                // ---------------- only vary vy sigma --------------
+                // "--load_run=26_22Opt_VyExpSca1.0Sig0.1",
+                // "--load_run=26_22Opt_VyExpSca1.0Sig0.15",
+                // "--load_run=26_22Opt_VyExpSca1.0Sig0.2",
+                // ================ returning to 18Opt where we only min action_rate, and the vel tracking is s.t. v_xy together scale 1 sigma 0.25, wz scale 0.5 sigma 0.25 =======
+                // "--load_run=27_18Opt_VertVirtLeg-1e-01",  // [standing] legs still inwards
+                // "--load_run=27_18Opt_VertVirtLeg-1e+00",  // [standing] hind right leg still inwards, [walking fwd & side] similar to prev opt
+                // "--load_run=27_18Opt_VertVirtLeg-2e+00",
+                // "--load_run=27Opt_18Opt_VertVirtLeg-4e+00",  // opt, hard to tell which is opt, standing all steps a bit, walking fwd all good
+                // "--load_run=27_18Opt_VertVirtLeg-6e+00",
+                // "--load_run=27_18Opt_VertVirtLeg-8e+00",
+                // "--load_run=27_18Opt_VertVirtLeg-1e+01",  // [standing] still stepping a bit, [walking fwd & side] tend to use smalller frequent steps, reg might be too much
+                // "--load_run=27_18Opt_VertVirtLeg-1e+02",  // pure jerky noise
+                // ================= based on 18Opt with VertVirtLeg-4, increase cmd range ======================
+                // "--load_run=28_18Opt_VertVirtLeg-4_CmdRangeAll2",  // one ft always in the air
+                // "--load_run=28_18Opt_VertVirtLeg-4_CmdRangeAll3",  // pure jerky noise
+                // "--load_run=28_18Opt_VertVirtLeg-4_CmdRangeAll4",
+                // "--load_run=28_18Opt_VertVirtLeg-4_CmdRangeAll5",
+                // "--load_run=28_18Opt_VertVirtLeg-4_CmdRangeAll6",
+                // ========= based on 18Opt with VertVirtLeg-4 and TwistSepSameExp, increase cmd range =================
+                // -------------- Scale0.5Sigma0.25(same as roller_cfg_search: 20Opt) ------------
+                // "--load_run=29_28TwistSepSameExpScale0.5Sigma0.25_CmdRangeAll2"
+                // "--load_run=29_28TwistSepSameExpScale0.5Sigma0.25_CmdRangeAll3"  // 1 ft always in the air
+                // "--load_run=29_28TwistSepSameExpScale0.5Sigma0.25_CmdRangeAll4"  // 2 ft always in the air
+                // "--load_run=29_28TwistSepSameExpScale0.5Sigma0.25_CmdRangeAll5"  // pure jerky noise
+                // -------------- [better] Scale1.0Sigma0.25(same as 22Opt) ------------
+                // "--load_run=30_28TwistSepSameExpScale1.0Sigma0.25_CmdRangeAll2"
+                // "--load_run=30_28TwistSepSameExpScale1.0Sigma0.25_CmdRangeAll3"
+                // "--load_run=30_28TwistSepSameExpScale1.0Sigma0.25_CmdRangeAll4"
+                // "--load_run=30_28TwistSepSameExpScale1.0Sigma0.25_CmdRangeAll5"  // 2 ft always in the air
+                // ================= based on 29 and 30, rmv antislip penalty ==========================
+                // -------------- Scale0.5Sigma0.25(same as roller_cfg_search: 20Opt) ------------
+                // "--load_run=31_29NoAntiSlip_CmdRangeAll2",
+                // "--load_run=31_29NoAntiSlip_CmdRangeAll3",
+                // "--load_run=31_29NoAntiSlip_CmdRangeAll4",
+                // "--load_run=31_29NoAntiSlip_CmdRangeAll5",
+                // -------------- [better] Scale1.0Sigma0.25(same as 22Opt) ------------
+                // "--load_run=32_30NoAntiSlip_CmdRangeAll2",
+                // "--load_run=32_30NoAntiSlip_CmdRangeAll3",
+                // "--load_run=32_30NoAntiSlip_CmdRangeAll4",
+                // "--load_run=32_30NoAntiSlip_CmdRangeAll5",
+                // +============================================================================================+
+                // ||                                                                                          ||
+                // ||                           switched to synced urdf mjcf (v1.0)                            ||
+                // ||                                                                                          ||
+                // +============================================================================================+
+                // "--load_run=a0_27Opt_TwistOrigVxy1Wz0.5Sig0.25_NoMinDofAcc0Orig",
+                // "--load_run=a0_27Opt_TwistOrigVxy1Wz0.5Sig0.25_MinDofAcc-1e-08",
+                // "--load_run=a0_27Opt_TwistOrigVxy1Wz0.5Sig0.25_MinDofAcc-1e-07",
+                // "--load_run=a0_27Opt_TwistOrigVxy1Wz0.5Sig0.25_MinDofAcc-1e-06",  // pure jerky noise
+                // "--load_run=a0_27Opt_TwistSepSameExpSca0.5Sig0.25_NoMinDofAcc0Orig",
+                // "--load_run=a0_27Opt_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-08",
+                // "--load_run=a0_27Opt_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-07",
+                // "--load_run=a0_27Opt_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-06",
+                // "--load_run=a0_27Opt_TwistSepSameExpSca1.0Sig0.25_NoMinDofAcc0Orig",  // this is the `master` cfg dcdc14d57be59b363cd6fe916fe808ced1890
+                // "--load_run=a0_27Opt_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-08",
+                // "--load_run=a0_27Opt_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-07",
+                // "--load_run=a0_27Opt_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-06",
+                // "--load_run=a0_27Opt_TwistSepSameExpSca1.5Sig0.25_NoMinDofAcc0Orig",
+                // "--load_run=a0_27Opt_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-08",
+                // "--load_run=a0_27Opt_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-07",
+                // "--load_run=a0_27Opt_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-06",
+                // +------------------------------------------------------------------------------------------+
+                // |                                                                                          |
+                // |  stick to TwistSepSameExpSig0.25 Scale 1 / 1.5, MinDofAcc -1e-07 / -06, Cmd Range 2 / 3  |
+                // |                                                                                          |
+                // +------------------------------------------------------------------------------------------+
+                // ---------------------------- cmd range 2 ----------------------------
+                // "--load_run=a1_27Opt_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-07_CmdRang2.0",
+                // "--load_run=a1_27Opt_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-06_CmdRang2.0",
+                // "--load_run=a1_27Opt_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-07_CmdRang2.0",
+                // "--load_run=a1_27Opt_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-06_CmdRang2.0",
+                // ---------------------------- cmd range 3 ----------------------------
+                // "--load_run=a1_27Opt_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-07_CmdRang3.0",
+                // "--load_run=a1_27Opt_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-06_CmdRang3.0",
+                // "--load_run=a1_27Opt_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-07_CmdRang3.0",
+                // "--load_run=a1_27Opt_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-06_CmdRang3.0",
+                // +------------------------------------------------------------------------------------------+
+                // |                                                                                          |
+                // |                            add back base mass & com rand                                 |
+                // |                                                                                          |
+                // +------------------------------------------------------------------------------------------+
+                // "--load_run=a2_27Opt_TwistSepSameExpSca0.5Sig0.25_NoMinDofAcc0Orig_BaseMassRand1kg_BaseComPosRandX3cmY2cm",
+                // ↑ foot still has unstoppable stepping
+                // 1) add dof_acc min
+                // "--load_run=a3_27Opt_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-07_BaseMassRand1kg_BaseComPosRandX3cmY2cm",
+                // 2) rmv antislip
+                // "--load_run=a3_27Opt_TwistSepSameExpSca0.5Sig0.25_NoMinDofAcc0Orig_BaseMassRand1kg_BaseComPosRandX3cmY2cm_NoAntislip",
+                // +------------------------------------------------------------------------------------------+
+                // |                                                                                          |
+                // |                                    real to sim                                           |
+                // |                                                                                          |
+                // +------------------------------------------------------------------------------------------+
+                // -------------- armature calibration ----------------
+                // "--load_run=b1_27Opt_TwistSepSameExpSca0.5Sig0.25_NoMinDofAcc0Orig_ArmaSet0.01",  // hdw: frequent stepping
+                "--load_run=b1Opt_27Opt_TwistSepSameExpSca0.5Sig0.25_NoMinDofAcc0Orig_ArmaSet0.02_v1.0.0",  // hdw: works for low cmds
+                // "--load_run=b1_27Opt_TwistSepSameExpSca0.5Sig0.25_NoMinDofAcc0Orig_ArmaSet0.03",  // hdw: works for low cmds, oscillation when you walk the dog a bit
+                // "--load_run=b1_27Opt_TwistSepSameExpSca0.5Sig0.25_NoMinDofAcc0Orig_ArmaSet0.04",  // hdw: works for low cmds, oscillation when you walk the dog a bit
+                // "--load_run=b1_27Opt_TwistSepSameExpSca0.5Sig0.25_NoMinDofAcc0Orig_ArmaSet0.05",  // hdw: works for low cmds, oscillation when you walk the dog a bit, [overfit] best sideway stability
+                // "--load_run=b1_27Opt_TwistSepSameExpSca0.5Sig0.25_NoMinDofAcc0Orig_ArmaSet0.06",  // hdw: oscillation when you walk the dog a bit
+                // -------------- armature calibration with domain randomization ----------------
+                // "--load_run=b2_27Opt_TwistSepSameExpSca0.5Sig0.25_NoMinDofAcc0Orig_ArmaSet0.02Rand0.01",  // all no significant improvement compared with no rand, starting from 0.04 even worse than no rand
+                // "--load_run=b2_27Opt_TwistSepSameExpSca0.5Sig0.25_NoMinDofAcc0Orig_ArmaSet0.03Rand0.01",
+                // "--load_run=b2_27Opt_TwistSepSameExpSca0.5Sig0.25_NoMinDofAcc0Orig_ArmaSet0.04Rand0.01",
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
+        },
+        {   "label": "play go1_flat_roller_cfg_search_play",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "legged_gym/scripts/play.py",
+                // "--task=go1_flat_roller_cfg_search_play",
+                "--task=go1_flat_roller_x_play",
+                "--experiment_name=0_Round_0/go1_flat_roller_cfg_search",
+                "--checkpoint=-1",
+                // +------------------------------------------------------------------------------+
+                // |                                                                              |
+                // |                          only one smoothing penalty                          |
+                // |                                                                              |
+                // +------------------------------------------------------------------------------+
+                // ===================== x =============================
+                // ------------ dof_acc only ------------
+                // "--load_run=0_x9Opt_SphereRollerColli_RollerCfgx_MinDofAccOnly-1e-07",
+                // "--load_run=0Opt_x9Opt_SphereRollerColli_RollerCfgx_MinDofAccOnly-1e-06",
+                // "--load_run=0_x9Opt_SphereRollerColli_RollerCfgx_MinDofAccOnly-1e-05",
+                // ------------ action_rate only ------------
+                // "--load_run=1_x9Opt_SphereRollerColli_RollerCfgx_MinActionRateOnly-1e-03",
+                // "--load_run=1Opt_x9Opt_SphereRollerColli_RollerCfgx_MinActionRateOnly-1e-02",
+                // "--load_run=1_x9Opt_SphereRollerColli_RollerCfgx_MinActionRateOnly-1e-01",
+                // ==================== diamond ==========================
+                // ------------ dof_acc only ------------
+                // "--load_run=2_x9Opt_SphereRollerColli_RollerCfgdiamond_MinDofAccOnly-1e-07",
+                // "--load_run=2Opt_x9Opt_SphereRollerColli_RollerCfgdiamond_MinDofAccOnly-1e-06",
+                // "--load_run=2_x9Opt_SphereRollerColli_RollerCfgdiamond_MinDofAccOnly-1e-05",
+                // ------------ action_rate only ------------
+                // "--load_run=3_x9Opt_SphereRollerColli_RollerCfgdiamond_MinActionRateOnly-1e-03",
+                // "--load_run=3Opt_x9Opt_SphereRollerColli_RollerCfgdiamond_MinActionRateOnly-1e-02",
+                // "--load_run=3_x9Opt_SphereRollerColli_RollerCfgdiamond_MinActionRateOnly-1e-01",
+                // ======================= v ==========================
+                // ------------ dof_acc only ------------
+                // "--load_run=4_x9Opt_SphereRollerColli_RollerCfgv_MinDofAccOnly-1e-07",
+                // "--load_run=4Opt_x9Opt_SphereRollerColli_RollerCfgv_MinDofAccOnly-1e-06",
+                // "--load_run=4_x9Opt_SphereRollerColli_RollerCfgv_MinDofAccOnly-1e-05",
+                // ------------ action_rate only ------------
+                // "--load_run=5_x9Opt_SphereRollerColli_RollerCfgv_MinActionRateOnly-1e-03",
+                // "--load_run=5Opt_x9Opt_SphereRollerColli_RollerCfgv_MinActionRateOnly-1e-02",
+                // "--load_run=5_x9Opt_SphereRollerColli_RollerCfgv_MinActionRateOnly-1e-01",
+                // ======================= fprv ==========================
+                // ------------ dof_acc only ------------
+                // "--load_run=6_x9Opt_SphereRollerColli_RollerCfgfprv_MinDofAccOnly-1e-07",
+                // "--load_run=6Opt_x9Opt_SphereRollerColli_RollerCfgfprv_MinDofAccOnly-1e-06",
+                // "--load_run=6_x9Opt_SphereRollerColli_RollerCfgfprv_MinDofAccOnly-1e-05",
+                // ------------ action_rate only ------------
+                // "--load_run=7_x9Opt_SphereRollerColli_RollerCfgfprv_MinActionRateOnly-1e-03",
+                // "--load_run=7Opt_x9Opt_SphereRollerColli_RollerCfgfprv_MinActionRateOnly-1e-02",
+                // "--load_run=7_x9Opt_SphereRollerColli_RollerCfgfprv_MinActionRateOnly-1e-01",
+                // ======================= p ==========================
+                // ------------ dof_acc only ------------
+                // "--load_run=8_x9Opt_SphereRollerColli_RollerCfgp_MinDofAccOnly-1e-07",
+                // "--load_run=8Opt_x9Opt_SphereRollerColli_RollerCfgp_MinDofAccOnly-1e-06",
+                // "--load_run=8_x9Opt_SphereRollerColli_RollerCfgp_MinDofAccOnly-1e-05",
+                // ------------ action_rate only ------------
+                // "--load_run=9_x9Opt_SphereRollerColli_RollerCfgp_MinActionRateOnly-1e-03",
+                // "--load_run=9Opt_x9Opt_SphereRollerColli_RollerCfgp_MinActionRateOnly-1e-02",
+                // "--load_run=9_x9Opt_SphereRollerColli_RollerCfgp_MinActionRateOnly-1e-01",
+                // +------------------------------------------------------------------------------+
+                // |                                                                              |
+                // |      vert_cirt_leg reg, use above opt min dof_acc / action_rate only         |
+                // |                                                                              |
+                // +------------------------------------------------------------------------------+
+                // ========================= x ==============================
+                // ----------------- dof_acc only -----------------
+                // "--load_run=10_0Opt_RollerCfgx_MinDofAccOnly-1e-06_VertVirtLeg-1e-01",
+                // "--load_run=10_0Opt_RollerCfgx_MinDofAccOnly-1e-06_VertVirtLeg-1e+00",  // opt, legs not vertical enough, range of vert_vert_leg params much smaller than action_rate min
+                // "--load_run=10_0Opt_RollerCfgx_MinDofAccOnly-1e-06_VertVirtLeg-2e+00",  // similar
+                // "--load_run=10_0Opt_RollerCfgx_MinDofAccOnly-1e-06_VertVirtLeg-4e+00",
+                // "--load_run=10_0Opt_RollerCfgx_MinDofAccOnly-1e-06_VertVirtLeg-6e+00",
+                // "--load_run=10_0Opt_RollerCfgx_MinDofAccOnly-1e-06_VertVirtLeg-8e+00",
+                // "--load_run=10_0Opt_RollerCfgx_MinDofAccOnly-1e-06_VertVirtLeg-1e+01",
+                // --------------- action_rate only ---------------
+                // "--load_run=11_1Opt_RollerCfgx_MinActRateOnly-1e-02_VertVirtLeg-1e-01",  // still works, just foot not vertical enough
+                // "--load_run=11_1Opt_RollerCfgx_MinActRateOnly-1e-02_VertVirtLeg-1e+00",
+                // "--load_run=11_1Opt_RollerCfgx_MinActRateOnly-1e-02_VertVirtLeg-2e+00",
+                "--load_run=11Opt_1Opt_RollerCfgx_MinActRateOnly-1e-02_VertVirtLeg-4e+00",  // opt, [stand]: foot vertical not tilted, [sidways]: step smaller & faster than -1e+00 but not too serious
+                // "--load_run=11_1Opt_RollerCfgx_MinActRateOnly-1e-02_VertVirtLeg-6e+00",
+                // "--load_run=11_1Opt_RollerCfgx_MinActRateOnly-1e-02_VertVirtLeg-8e+00",
+                // "--load_run=11_1Opt_RollerCfgx_MinActRateOnly-1e-02_VertVirtLeg-1e+01",  // still works, just step too small too fast
+                // ======================= diamond ==========================
+                // ----------------- dof_acc only -----------------
+                // "--load_run=12_2Opt_RollerCfgdiamond_MinDofAccOnly-1e-06_VertVirtLeg-1e-01",
+                // "--load_run=12_2Opt_RollerCfgdiamond_MinDofAccOnly-1e-06_VertVirtLeg-1e+00",  // opt, legs not vertical enough, range of vert_vert_leg params much smaller than action_rate min
+                // "--load_run=12_2Opt_RollerCfgdiamond_MinDofAccOnly-1e-06_VertVirtLeg-2e+00",  // similar
+                // "--load_run=12_2Opt_RollerCfgdiamond_MinDofAccOnly-1e-06_VertVirtLeg-4e+00",
+                // "--load_run=12_2Opt_RollerCfgdiamond_MinDofAccOnly-1e-06_VertVirtLeg-6e+00",
+                // "--load_run=12_2Opt_RollerCfgdiamond_MinDofAccOnly-1e-06_VertVirtLeg-8e+00",
+                // "--load_run=12_2Opt_RollerCfgdiamond_MinDofAccOnly-1e-06_VertVirtLeg-1e+01",
+                // --------------- action_rate only ---------------
+                // "--load_run=13_3Opt_RollerCfgdiamond_MinActRateOnly-1e-02_VertVirtLeg-1e-01",  // still works, just foot not vertical enough
+                // "--load_run=13_3Opt_RollerCfgdiamond_MinActRateOnly-1e-02_VertVirtLeg-1e+00",
+                // "--load_run=13_3Opt_RollerCfgdiamond_MinActRateOnly-1e-02_VertVirtLeg-2e+00",
+                // "--load_run=13_3Opt_RollerCfgdiamond_MinActRateOnly-1e-02_VertVirtLeg-4e+00",  // opt, [stand]: foot vertical not tilted, [sidways]: step smaller & faster than -1e+00 but not too serious
+                // "--load_run=13_3Opt_RollerCfgdiamond_MinActRateOnly-1e-02_VertVirtLeg-6e+00",
+                // "--load_run=13_3Opt_RollerCfgdiamond_MinActRateOnly-1e-02_VertVirtLeg-8e+00",
+                // "--load_run=13_3Opt_RollerCfgdiamond_MinActRateOnly-1e-02_VertVirtLeg-1e+01",  // still works, just step too small too fast
+                // ========================= v ==============================
+                // ----------------- dof_acc only -----------------
+                // "--load_run=14_4Opt_RollerCfgv_MinDofAccOnly-1e-06_VertVirtLeg-1e-01",
+                // "--load_run=14_4Opt_RollerCfgv_MinDofAccOnly-1e-06_VertVirtLeg-1e+00",  // opt, legs not vertical enough, range of vert_vert_leg params much smaller than action_rate min
+                // "--load_run=14_4Opt_RollerCfgv_MinDofAccOnly-1e-06_VertVirtLeg-2e+00",  // similar
+                // "--load_run=14_4Opt_RollerCfgv_MinDofAccOnly-1e-06_VertVirtLeg-4e+00",
+                // "--load_run=14_4Opt_RollerCfgv_MinDofAccOnly-1e-06_VertVirtLeg-6e+00",
+                // "--load_run=14_4Opt_RollerCfgv_MinDofAccOnly-1e-06_VertVirtLeg-8e+00",
+                // "--load_run=14_4Opt_RollerCfgv_MinDofAccOnly-1e-06_VertVirtLeg-1e+01",
+                // --------------- action_rate only ---------------
+                // "--load_run=15_5Opt_RollerCfgv_MinActRateOnly-1e-02_VertVirtLeg-1e-01",  // still works, just foot not vertical enough
+                // "--load_run=15_5Opt_RollerCfgv_MinActRateOnly-1e-02_VertVirtLeg-1e+00",
+                // "--load_run=15_5Opt_RollerCfgv_MinActRateOnly-1e-02_VertVirtLeg-2e+00",
+                // "--load_run=15_5Opt_RollerCfgv_MinActRateOnly-1e-02_VertVirtLeg-4e+00",  // opt, [stand]: foot vertical not tilted, [sidways]: step smaller & faster than -1e+00 but not too serious
+                // "--load_run=15_5Opt_RollerCfgv_MinActRateOnly-1e-02_VertVirtLeg-6e+00",
+                // "--load_run=15_5Opt_RollerCfgv_MinActRateOnly-1e-02_VertVirtLeg-8e+00",
+                // "--load_run=15_5Opt_RollerCfgv_MinActRateOnly-1e-02_VertVirtLeg-1e+01",  // still works, just step too small too fast
+                // ======================== fprv ============================
+                // ----------------- dof_acc only -----------------
+                // "--load_run=16_6Opt_RollerCfgfprv_MinDofAccOnly-1e-06_VertVirtLeg-1e-01",
+                // "--load_run=16_6Opt_RollerCfgfprv_MinDofAccOnly-1e-06_VertVirtLeg-1e+00",  // opt, legs not vertical enough, range of vert_vert_leg params much smaller than action_rate min
+                // "--load_run=16_6Opt_RollerCfgfprv_MinDofAccOnly-1e-06_VertVirtLeg-2e+00",  // similar
+                // "--load_run=16_6Opt_RollerCfgfprv_MinDofAccOnly-1e-06_VertVirtLeg-4e+00",
+                // "--load_run=16_6Opt_RollerCfgfprv_MinDofAccOnly-1e-06_VertVirtLeg-6e+00",
+                // "--load_run=16_6Opt_RollerCfgfprv_MinDofAccOnly-1e-06_VertVirtLeg-8e+00",
+                // "--load_run=16_6Opt_RollerCfgfprv_MinDofAccOnly-1e-06_VertVirtLeg-1e+01",
+                // --------------- action_rate only ---------------
+                // "--load_run=17_7Opt_RollerCfgfprv_MinActRateOnly-1e-02_VertVirtLeg-1e-01",  // still works, just foot not vertical enough
+                // "--load_run=17_7Opt_RollerCfgfprv_MinActRateOnly-1e-02_VertVirtLeg-1e+00",
+                // "--load_run=17_7Opt_RollerCfgfprv_MinActRateOnly-1e-02_VertVirtLeg-2e+00",
+                // "--load_run=17_7Opt_RollerCfgfprv_MinActRateOnly-1e-02_VertVirtLeg-4e+00",  // opt, [stand]: foot vertical not tilted, [sidways]: step smaller & faster than -1e+00 but not too serious
+                // "--load_run=17_7Opt_RollerCfgfprv_MinActRateOnly-1e-02_VertVirtLeg-6e+00",
+                // "--load_run=17_7Opt_RollerCfgfprv_MinActRateOnly-1e-02_VertVirtLeg-8e+00",
+                // "--load_run=17_7Opt_RollerCfgfprv_MinActRateOnly-1e-02_VertVirtLeg-1e+01",  // still works, just step too small too fast
+                // ========================= p [uncontrollable, amazing that it converges, just for reference] ==============================
+                // ----------------- dof_acc only -----------------
+                // "--load_run=18_8Opt_RollerCfgp_MinDofAccOnly-1e-06_VertVirtLeg-1e-01",
+                // "--load_run=18_8Opt_RollerCfgp_MinDofAccOnly-1e-06_VertVirtLeg-1e+00",
+                // "--load_run=18_8Opt_RollerCfgp_MinDofAccOnly-1e-06_VertVirtLeg-2e+00",
+                // "--load_run=18_8Opt_RollerCfgp_MinDofAccOnly-1e-06_VertVirtLeg-4e+00",
+                // "--load_run=18_8Opt_RollerCfgp_MinDofAccOnly-1e-06_VertVirtLeg-6e+00",
+                // "--load_run=18_8Opt_RollerCfgp_MinDofAccOnly-1e-06_VertVirtLeg-8e+00",
+                // "--load_run=18_8Opt_RollerCfgp_MinDofAccOnly-1e-06_VertVirtLeg-1e+01",
+                // --------------- action_rate only ---------------
+                // "--load_run=19_9Opt_RollerCfgp_MinActRateOnly-1e-02_VertVirtLeg-1e-01",
+                // "--load_run=19_9Opt_RollerCfgp_MinActRateOnly-1e-02_VertVirtLeg-1e+00",
+                // "--load_run=19_9Opt_RollerCfgp_MinActRateOnly-1e-02_VertVirtLeg-2e+00",
+                // "--load_run=19_9Opt_RollerCfgp_MinActRateOnly-1e-02_VertVirtLeg-4e+00",
+                // "--load_run=19_9Opt_RollerCfgp_MinActRateOnly-1e-02_VertVirtLeg-6e+00",
+                // "--load_run=19_9Opt_RollerCfgp_MinActRateOnly-1e-02_VertVirtLeg-1e+01",
+                // +------------------------------------------------------------------------------+
+                // |                                                                              |
+                // |         x, min action_rate 1e-2, twist tracking exp separate test            |
+                // |                                                                              |
+                // +------------------------------------------------------------------------------+
+                // =========== vx, vy, wz separate but use same scale & sigma ==================
+                // -------------------------- vary scale --------------------------
+                // "--load_run=20Opt_11Opt_RollerCfgx_TwistExpSepSameScale0.5Sigma0.25",  // opt, [stand] ok static balance, [fwd] legs not overstretch at start
+                // "--load_run=20_11Opt_RollerCfgx_TwistExpSepSameScale1.0Sigma0.25",  // front leg overstretch when start 0m/s cmd [vx, vy, wz] = [1, 0, 0] m/s | rad/s
+                // "--load_run=20_11Opt_RollerCfgx_TwistExpSepSameScale1.5Sigma0.25",
+                // "--load_run=20_11Opt_RollerCfgx_TwistExpSepSameScale2.0Sigma0.25",
+                // ---------- vary sigma [bigger sigma, weaker tracking] ----------
+                // "--load_run=21_11Opt_RollerCfgx_TwistExpSepSameScale1.0Sigma0.1",
+                // "--load_run=21_11Opt_RollerCfgx_TwistExpSepSameScale1.0Sigma0.5",   // not weak enough, front leg overstretch when start 0m/s cmd [vx, vy, wz] = [1, 0, 0] m/s | rad/s
+                // "--load_run=21_11Opt_RollerCfgx_TwistExpSepSameScale1.0Sigma0.75",  // also hurts vx tracking
+                // "--load_run=21_11Opt_RollerCfgx_TwistExpSepSameScale1.0Sigma1.0",
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/legged_gym"
+            },
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
+        },
+        {   "label": "play go1_flat_roller_x_play",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "legged_gym/scripts/play.py",
+                "--task=go1_flat_roller_x_play",
+                "--experiment_name=0_Round_0/go1_flat_roller_x",
+                "--checkpoint=-1",
+                // ===================== minimization rws search ========================
+                // ---------------- torques only ---------------
+                // "--load_run=4_Walk15Opt_MinTorqOnly-1e-05",
+                // "--load_run=4_Walk15Opt_MinTorqOnly-1e-04",  // step freq too high
+                // "--load_run=4_Walk15Opt_MinTorqOnly-1e-03",  // opt, but too many frequent small steps
+                // "--load_run=4_Walk15Opt_MinTorqOnly-1e-02",  // pure jerky noise
+                // "--load_run=4_Walk15Opt_MinTorqOnly-1e-01",
+                // ---------------- dof_acc only ---------------
+                // "--load_run=5_Walk15Opt_MinDofAccOnly-1e-09",
+                // "--load_run=5_Walk15Opt_MinDofAccOnly-1e-08",  // step freq too high
+                // "--load_run=5_Walk15Opt_MinDofAccOnly-1e-07",  // step freq a bit too high, but close to horse-like running
+                // "--load_run=5_Walk15Opt_MinDofAccOnly-1e-06",  // opt
+                // "--load_run=5_Walk15Opt_MinDofAccOnly-1e-05",  // pure jerky noise
+                // -------------- action_rate only -------------
+                // "--load_run=6_Walk15Opt_MinActRateOnly-1e-04",
+                // "--load_run=6_Walk15Opt_MinActRateOnly-1e-03",  // one ft always in the air
+                // "--load_run=6_Walk15Opt_MinActRateOnly-1e-02",  // opt, but hind right leg different from the other 3
+                // "--load_run=6_Walk15Opt_MinActRateOnly-1e-01",  // pure jerky noise
+                // "--load_run=6_Walk15Opt_MinActRateOnly-1",
+                // ----------------- power only ----------------
+                // "--load_run=7_Walk15Opt_MinPowerOnly-1e-05",  // step freq too high
+                // "--load_run=7_Walk15Opt_MinPowerOnly-1e-04",  // opt, step freq a bit too high comparable to that of torq min in walking, but better than torq min in roller_x
+                // "--load_run=7_Walk15Opt_MinPowerOnly-1e-03",  // pure jerky noise
+                // "--load_run=7_Walk15Opt_MinPowerOnly-1e-02",
+                // "--load_run=7_Walk15Opt_MinPowerOnly-1e-01",
+                // =================== rerun minimization rwd scale search after rmving antislip ===================
+                // ------------- torques only --------------
+                // "--load_run=8_Walk15Opt_NoAntiSlip_MinTorqOnly-1e-04",  // step freq too high
+                // "--load_run=8_Walk15Opt_NoAntiSlip_MinTorqOnly-1e-03",  // opt, but tends to use small frequent steps not rolling
+                // "--load_run=8_Walk15Opt_NoAntiSlip_MinTorqOnly-1e-02",  // pure jerky noise
+                // -------------- dof_acc only -------------
+                // "--load_run=9_Walk15Opt_NoAntiSlip_MinDofAccOnly-1e-08",
+                // "--load_run=9_Walk15Opt_NoAntiSlip_MinDofAccOnly-1e-07",  // step freq too high
+                // "--load_run=9Opt_Walk15Opt_NoAntiSlip_MinDofAccOnly-1e-06",  // opt, but tends to use orthogonal direc of the wheel as no-slip stance
+                // "--load_run=9_Walk15Opt_NoAntiSlip_MinDofAccOnly-1e-05",  // pure jerky noise
+                // ------------ action_rate only -----------
+                // "--load_run=10_Walk15Opt_NoAntiSlip_MinActRateOnly-1e-03",  // step freq too high
+                // "--load_run=10Opt_Walk15Opt_NoAntiSlip_MinActRateOnly-1e-02",  // opt, but but hind right leg different from the other 3
+                // "--load_run=10_Walk15Opt_NoAntiSlip_MinActRateOnly-1e-01",  // pure jerky noise
+                // --------------- power only --------------
+                // "--load_run=11_Walk15Opt_NoAntiSlip_MinPowerOnly-1e-05",
+                // "--load_run=11_Walk15Opt_NoAntiSlip_MinPowerOnly-1e-04",  // opt, but tends to use small frequent steps not rolling
+                // "--load_run=11_Walk15Opt_NoAntiSlip_MinPowerOnly-1e-03",  // pure jerky noise
+                // "--load_run=11_Walk15Opt_NoAntiSlip_MinPowerOnly-1e-02",
+                // "--load_run=11_Walk15Opt_NoAntiSlip_MinPowerOnly-1e-01",
+                // =================== [both still stepping] rwds to prefer rolling against stepping ===================
+                // -------------- contact_roller_favor_roll -------------
+                // "--load_run=12_9Opt_ContactRollerFavorroll1e-10",  // still stepping instead of rolling
+                // "--load_run=12_9Opt_ContactRollerFavorroll1e-08",  // still stepping instead of rolling
+                // "--load_run=12_9Opt_ContactRollerFavorroll1e-06",  // still stepping instead of rolling
+                // "--load_run=12_9Opt_ContactRollerFavorroll1e-04",  // crazily performing jerky rolling motion
+                // ----------------- roller_z_vel_min -------------------
+                // "--load_run=13_9Opt_RollerZVelMin1e-04",  // still stepping instead of rolling
+                // "--load_run=13_9Opt_RollerZVelMin1e-02",  // still stepping instead of rolling
+                // "--load_run=13_9Opt_RollerZVelMin1e-01",  // pure jerky noise
+                // ============================ only cmd vx wz =============================
+                // "--load_run=14_9Opt_OnlyCmdVxWz_Vx1.0",  // normal stepping when cmd vx=1m/s
+                // "--load_run=14_9Opt_OnlyCmdVxWz_Vx2.0",  // frequent tiny steps when cmd vx=1m/s
+                // "--load_run=14_9Opt_OnlyCmdVxWz_Vx3.0",  // 4-leg jumping & RL leg tilts really inwards
+                // "--load_run=14_9Opt_OnlyCmdVxWz_Vx4.0",
+                // ========================== less min rwd on hip ===========================
+                // --------------- dof_acc only ---------------
+                // "--load_run=15_9Opt_DofAccSep_Hip-1e-09_other-1e-6",
+                // "--load_run=15_9Opt_DofAccSep_Hip-1e-08_other-1e-6",
+                // "--load_run=15_9Opt_DofAccSep_Hip-1e-07_other-1e-6",
+                // "--load_run=15_9Opt_DofAccSep_Hip-1e-06_other-1e-6",
+                // "--load_run=15_9Opt_DofAccSep_Hip-1e-05_other-1e-6",
+                // "--load_run=15_9Opt_DofAccSep_Hip-1e-04_other-1e-6",
+                // --------------- action_rate only ---------------
+                // "--load_run=16_10Opt_ActionRateSep_Hip-1e-05_other-1e-2",
+                // "--load_run=16_10Opt_ActionRateSep_Hip-1e-04_other-1e-0",
+                // "--load_run=16_10Opt_ActionRateSep_Hip-1e-03_other-1e-2",
+                // "--load_run=16_10Opt_ActionRateSep_Hip-1e-02_other-1e-2",
+                // "--load_run=16_10Opt_ActionRateSep_Hip-1e-01_other-1e-2",
+                // "--load_run=16_10Opt_ActionRateSep_Hip-1e+00_other-1e-2",
+                // +============================================================================================+
+                // ||                                                                                          ||
+                // ||            switched to go1_flat_roller_cfg_search for a while, and then back             ||
+                // ||                                                                                          ||
+                // +============================================================================================+
+                // ======= [not used yet] starting from 20Opt: [vx, vy, wz] scale 0.5 sigma 0.25, vary vy only ===========
+                // -------------------------- vary scale --------------------------
+                // "--load_run=17_RollerCfgSearch20Opt_TwistExpVyScale0.0Sigma0.25",
+                // "--load_run=17_RollerCfgSearch20Opt_TwistExpVyScale0.01Sigma0.25",  // vy biases to one side when cmded to skate fwd 1m/s
+                // "--load_run=17Opt_RollerCfgSearch20Opt_TwistExpVyScale0.1Sigma0.25",   // opt
+                // "--load_run=17_RollerCfgSearch20Opt_TwistExpVyScale0.3Sigma0.25",   // unclear why worse than opt, left right stance time different
+                // ---------- vary sigma [bigger sigma, weaker tracking] ----------
+                // "--load_run=18_RollerCfgSearch20Opt_TwistExpVyScale0.5Sigma0.5",  // step freq too high
+                // "--load_run=18_RollerCfgSearch20Opt_TwistExpVyScale0.5Sigma0.75", // left right stance time different
+                // "--load_run=18_RollerCfgSearch20Opt_TwistExpVyScale0.5Sigma1.0",  // hard to tell which one among 0.75, 1.0, 10.0 is opt
+                // "--load_run=18_RollerCfgSearch20Opt_TwistExpVyScale0.5Sigma10.0",
+                // +------------------------------------------------------------------------------+
+                // |                                                                              |
+                // |                    start from 20Opt, increase cmd range                      |
+                // |                                                                              |
+                // +------------------------------------------------------------------------------+
+                // ------------- max: vx: unlimited, vy: 1m/s, wz: 2rad/s -------------
+                // "--load_run=19_RollerCfgSearch20Opt_CmdRangeVx1Vy1Wz1",
+                // "--load_run=19_RollerCfgSearch20Opt_CmdRangeVx2Vy1Wz2",
+                // "--load_run=19_RollerCfgSearch20Opt_CmdRangeVx3Vy1Wz2",  // max, vy and wz range can be increased
+                // "--load_run=19_RollerCfgSearch20Opt_CmdRangeVx4Vy1Wz2",  // takes really long to start moving
+                // "--load_run=19_RollerCfgSearch20Opt_CmdRangeVx5Vy1Wz2",
+                // ------------- max: vx: unlimited, vy: 3m/s, wz: 5rad/s -------------
+                // "--load_run=19_RollerCfgSearch20Opt_CmdRangeVx2Vy2Wz2",
+                // "--load_run=19Max_RollerCfgSearch20Opt_CmdRangeVx3Vy3Wz3",  // max
+                // "--load_run=19_RollerCfgSearch20Opt_CmdRangeVx4Vy3Wz4",  // refuse to move
+                // "--load_run=19_RollerCfgSearch20Opt_CmdRangeVx5Vy3Wz5",  // pure jerky noise
+                // "--load_run=19_RollerCfgSearch20Opt_CmdRangeVx6Vy3Wz5",  // refuse to move
+                // +------------------------------------------------------------------------------+
+                // |                                                                              |
+                // |                start from 20Opt, add low roller y antislip                   |
+                // |                                                                              |
+                // +------------------------------------------------------------------------------+
+                // "--load_run=20_RollerCfgSearch20Opt_LowRollerYAntislip-1e-03",
+                // "--load_run=20_RollerCfgSearch20Opt_LowRollerYAntislip-1e-02",  // ft still too low
+                // "--load_run=20Opt_RollerCfgSearch20Opt_LowRollerYAntislip-1e-01",  // opt
+                // "--load_run=20_RollerCfgSearch20Opt_LowRollerYAntislip-1e+00",  // leg overstretched
+                // "--load_run=20_RollerCfgSearch20Opt_LowRollerYAntislip-1e+01",  // abrupt 4-leg jump
+                // +------------------------------------------------------------------------------+
+                // |                                                                              |
+                // |         start from 20Opt, change effort min to energy-efficiency             |
+                // |                                                                              |
+                // +------------------------------------------------------------------------------+
+                // ---------------- power_linear only -----------------------
+                // "--load_run=21_RollerCfgSearch20Opt_MinPowerLinearOnly-1e-04",  // step freq tooo high
+                // "--load_run=21_RollerCfgSearch20Opt_MinPowerLinearOnly-1e-03",  // opt, step freq tooo high
+                // "--load_run=21_RollerCfgSearch20Opt_MinPowerLinearOnly-1e-02",  // pure jerky noise
+                // "--load_run=21_RollerCfgSearch20Opt_MinPowerLinearOnly-1e-01",
+                // "--load_run=21_RollerCfgSearch20Opt_MinPowerLinearOnly-1e+00",
+                // ---------------- cost_of_transport_linear only -----------------------
+                // "--load_run=22_RollerCfgSearch20Opt_MinCotLinearOnly-1e-04",  // step freq tooo high
+                // "--load_run=22_RollerCfgSearch20Opt_MinCotLinearOnly-1e-03",  // opt, step freq tooo high
+                // "--load_run=22_RollerCfgSearch20Opt_MinCotLinearOnly-1e-02",  // pure jerky noise
+                // "--load_run=22_RollerCfgSearch20Opt_MinCotLinearOnly-1e-01",
+                // "--load_run=22_RollerCfgSearch20Opt_MinCotLinearOnly-1e+00",
+                // +------------------------------------------------------------------------------+
+                // |                                                                              |
+                // |   start from 20Opt, cmd range all 1, min base y acc to reduce step freq      |
+                // |                                                                              |
+                // +------------------------------------------------------------------------------+
+                // "--load_run=23_RollerCfgSearch20Opt_BaseYAccMin-1e-04",
+                // "--load_run=23_RollerCfgSearch20Opt_BaseYAccMin-1e-03",
+                // "--load_run=23_RollerCfgSearch20Opt_BaseYAccMin-1e-02",
+                // "--load_run=23_RollerCfgSearch20Opt_BaseYAccMin-1e-01",
+                // "--load_run=23_RollerCfgSearch20Opt_BaseYAccMin-1e+00",  // [standing] vy drifts 0.2m/s, [fwd] galloping even for 1 m/s
+                // "--load_run=23_RollerCfgSearch20Opt_BaseYAccMin-1e+01",  // pure jerky noise
+                // +====================================================================================================+
+                // ||                                                                                                  ||
+                // ||                               switched to synced urdf mjcf (v1.0)                                ||
+                // ||                                                                                                  ||
+                // +====================================================================================================+
+                // +----------------------------------------------------------------------------------------------------------+
+                // |                                                                                                          |
+                // |    grid search NewUrdf30deg TwistSepSameExpSig0.25 Scale 0.5,1,1.5; MinDofAcc 0,-1e-8~-6; CmdRang 1-3    | // discarded
+                // |                                                                                                          |
+                // +----------------------------------------------------------------------------------------------------------+
+                // ================= TwistSepSameExpSca0.5Sig0.25 ==========================  // opt
+                // ------------- MinDofAcc0e+00 --------------
+                // "--load_run=a0_TwistSepSameExpSca0.5Sig0.25_MinDofAcc0e+00_CmdRang1.0",
+                // "--load_run=a0_TwistSepSameExpSca0.5Sig0.25_MinDofAcc0e+00_CmdRang2.0",
+                // "--load_run=a0_TwistSepSameExpSca0.5Sig0.25_MinDofAcc0e+00_CmdRang3.0",  // [vx 3m/s]: refuse to move if start from 0
+                // ------------- MinDofAcc-1e-08 --------------
+                // "--load_run=a0_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-08_CmdRang1.0",
+                // "--load_run=a0_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-08_CmdRang2.0",
+                // "--load_run=a0_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-08_CmdRang3.0",  // [vx 3m/s]: refuse to move if start from 0
+                // ------------- MinDofAcc-1e-07 --------------
+                // "--load_run=a0_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-07_CmdRang1.0",
+                // "--load_run=a0_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-07_CmdRang2.0",
+                // "--load_run=a0_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-07_CmdRang3.0",
+                // ------------- MinDofAcc-1e-06 --------------
+                // "--load_run=a0_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-06_CmdRang1.0",
+                // "--load_run=a0_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-06_CmdRang2.0",
+                // "--load_run=a0_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-06_CmdRang3.0",
+                // ================= TwistSepSameExpSca1.0Sig0.25 ==========================
+                // ------------- MinDofAcc0e+00 --------------
+                // "--load_run=a0_TwistSepSameExpSca1.0Sig0.25_MinDofAcc0e+00_CmdRang1.0",
+                // "--load_run=a0_TwistSepSameExpSca1.0Sig0.25_MinDofAcc0e+00_CmdRang2.0",
+                // "--load_run=a0_TwistSepSameExpSca1.0Sig0.25_MinDofAcc0e+00_CmdRang3.0",
+                // ------------- MinDofAcc-1e-08 --------------
+                // "--load_run=a0_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-08_CmdRang1.0",
+                // "--load_run=a0_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-08_CmdRang2.0",
+                // "--load_run=a0_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-08_CmdRang3.0",  // [stand]: 1 ft alway in the air
+                // ------------- MinDofAcc-1e-07 --------------
+                // "--load_run=a0_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-07_CmdRang1.0",
+                // "--load_run=a0_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-07_CmdRang2.0",
+                // "--load_run=a0_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-07_CmdRang3.0",  // [stand]: no shaking, base 0.31m, [vx 3m/s]: refuse to move if start from 0
+                // ------------- MinDofAcc-1e-06 --------------
+                // "--load_run=a0_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-06_CmdRang1.0",
+                // "--load_run=a0_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-06_CmdRang2.0",
+                // "--load_run=a0_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-06_CmdRang3.0",
+                // ================= TwistSepSameExpSca1.5Sig0.25 ==========================
+                // ------------- MinDofAcc0e+00 --------------
+                // "--load_run=a0_TwistSepSameExpSca1.5Sig0.25_MinDofAcc0e+00_CmdRang1.0",
+                // "--load_run=a0_TwistSepSameExpSca1.5Sig0.25_MinDofAcc0e+00_CmdRang2.0",
+                // "--load_run=a0_TwistSepSameExpSca1.5Sig0.25_MinDofAcc0e+00_CmdRang3.0",
+                // ------------- MinDofAcc-1e-08 --------------
+                // "--load_run=a0_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-08_CmdRang1.0",
+                // "--load_run=a0_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-08_CmdRang2.0",
+                // "--load_run=a0_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-08_CmdRang3.0",
+                // ------------- MinDofAcc-1e-07 --------------
+                // "--load_run=a0_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-07_CmdRang1.0",
+                // "--load_run=a0_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-07_CmdRang2.0",
+                // "--load_run=a0_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-07_CmdRang3.0",
+                // ------------- MinDofAcc-1e-06 --------------
+                // "--load_run=a0_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-06_CmdRang1.0",
+                // "--load_run=a0_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-06_CmdRang2.0",
+                // "--load_run=a0_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-06_CmdRang3.0",
+                // +--------------------------------------------------------------------------------------------------+
+                // |                                                                                                  |
+                // |    redo on old urdf TwistSepSameExpSig0.25 Scale 0.5,1,1.5; MinDofAcc 0,-1e-8~-6; CmdRang 1-3    |
+                // |                                                                                                  |
+                // +--------------------------------------------------------------------------------------------------+
+                // ================= TwistSepSameExpSca0.5Sig0.25 ==========================  // opt
+                // ------------- MinDofAcc0e+00 --------------
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca0.5Sig0.25_MinDofAcc0e+00_CmdRang1.0",  // [stand]: tiny shaking, base 0.36m, [vx 1m/s]: good, diagonal, base 0.35m
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca0.5Sig0.25_MinDofAcc0e+00_CmdRang2.0",
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca0.5Sig0.25_MinDofAcc0e+00_CmdRang3.0",  // [stand]: drift to one side, base 0.34m, [vx 3m/s]: good, diagonal, base 0.29m
+                // ------------- MinDofAcc-1e-08 --------------
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-08_CmdRang1.0",  // [stand]: tiny shaking, base 0.36m, [vx 1m/s]: good, close to diagonal, base 0.36m
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-08_CmdRang2.0",
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-08_CmdRang3.0",  // [stand]: tiny shaking + yaw drift, base 0.31m, [vx 3m/s] good, diagonal~gallop, base 0.3m
+                // ------------- MinDofAcc-1e-07 --------------
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-07_CmdRang1.0",
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-07_CmdRang2.0",
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-07_CmdRang3.0",  // refuse to move at vx=3m/s
+                // ------------- MinDofAcc-1e-06 --------------
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-06_CmdRang1.0",
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-06_CmdRang2.0",
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-06_CmdRang3.0",
+                // ================= TwistSepSameExpSca1.0Sig0.25 ==========================
+                // ------------- MinDofAcc0e+00 --------------
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca1.0Sig0.25_MinDofAcc0e+00_CmdRang1.0",
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca1.0Sig0.25_MinDofAcc0e+00_CmdRang2.0",
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca1.0Sig0.25_MinDofAcc0e+00_CmdRang3.0",  // [stand]: one ft always in the air
+                // ------------- MinDofAcc-1e-08 --------------
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-08_CmdRang1.0",
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-08_CmdRang2.0",
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-08_CmdRang3.0",  // hind legs inwards at vx=3m/s
+                // ------------- MinDofAcc-1e-07 --------------
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-07_CmdRang1.0",
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-07_CmdRang2.0",
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-07_CmdRang3.0",  // hind legs inwards at vx=3m/s
+                // ------------- MinDofAcc-1e-06 --------------
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-06_CmdRang1.0",
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-06_CmdRang2.0",
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-06_CmdRang3.0",
+                // ================= TwistSepSameExpSca1.5Sig0.25 ==========================
+                // ------------- MinDofAcc0e+00 --------------
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca1.5Sig0.25_MinDofAcc0e+00_CmdRang1.0",
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca1.5Sig0.25_MinDofAcc0e+00_CmdRang2.0",
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca1.5Sig0.25_MinDofAcc0e+00_CmdRang3.0",
+                // ------------- MinDofAcc-1e-08 --------------
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-08_CmdRang1.0",
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-08_CmdRang2.0",
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-08_CmdRang3.0",  // FL leg always in the air when vx=3m/s
+                // ------------- MinDofAcc-1e-07 --------------
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-07_CmdRang1.0",
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-07_CmdRang2.0",
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-07_CmdRang3.0",
+                // ------------- MinDofAcc-1e-06 --------------
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-06_CmdRang1.0",
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-06_CmdRang2.0",
+                // "--load_run=a1_oldUrdfRedo_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-06_CmdRang3.0",
+                // +--------------------------------------------------------------------------------------------------------+
+                // |                                                                                                        |
+                // |    redo on new urdf 23deg TwistSepSameExpSig0.25 Scale 0.5,1,1.5; MinDofAcc 0,-1e-8~-6; CmdRang 1-3    |
+                // |                                                                                                        |
+                // +--------------------------------------------------------------------------------------------------------+
+                // ================= TwistSepSameExpSca0.5Sig0.25 ==========================  // opt
+                // ------------- MinDofAcc0e+00 --------------
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca0.5Sig0.25_MinDofAcc0e+00_CmdRang1.0",  // [stand]: no shaking, base 0.35m, [vx 1m/s]: good, close to diagonal, base 0.35m
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca0.5Sig0.25_MinDofAcc0e+00_CmdRang2.0",
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca0.5Sig0.25_MinDofAcc0e+00_CmdRang3.0",  // [stand]: some shaking, base 0.31m, tiny shaking, [vx 3m/s]: good, diagonal ss, base 0.32m
+                // ------------- MinDofAcc-1e-08 --------------
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-08_CmdRang1.0",  // [stand]: tiny shaking, base 0.37m, [vx 1m/s]: good, diagonal, base 0.35m
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-08_CmdRang2.0",
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-08_CmdRang3.0",  // [stand]: some shaking, base 0.34m, [vx 3m/s]: good, diagonal ss, base 0.3m
+                // ------------- MinDofAcc-1e-07 --------------
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-07_CmdRang1.0",
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-07_CmdRang2.0",
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-07_CmdRang3.0",  // pure jerky noise
+                // ------------- MinDofAcc-1e-06 --------------
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-06_CmdRang1.0",
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-06_CmdRang2.0",
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-06_CmdRang3.0",
+                // ================= TwistSepSameExpSca1.0Sig0.25 ==========================
+                // ------------- MinDofAcc0e+00 --------------
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca1.0Sig0.25_MinDofAcc0e+00_CmdRang1.0",
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca1.0Sig0.25_MinDofAcc0e+00_CmdRang2.0",
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca1.0Sig0.25_MinDofAcc0e+00_CmdRang3.0",  // [standing]: legs overly tilted
+                // ------------- MinDofAcc-1e-08 --------------
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-08_CmdRang1.0",
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-08_CmdRang2.0",
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-08_CmdRang3.0",  // [standing]: big shaking, [vx 3m/s]: hind legs overly inwards
+                // ------------- MinDofAcc-1e-07 --------------
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-07_CmdRang1.0",
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-07_CmdRang2.0",
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-07_CmdRang3.0",  // hind legs inwards at vx=3m/s
+                // ------------- MinDofAcc-1e-06 --------------
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-06_CmdRang1.0",
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-06_CmdRang2.0",
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-06_CmdRang3.0",
+                // ================= TwistSepSameExpSca1.5Sig0.25 ==========================
+                // ------------- MinDofAcc0e+00 --------------
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca1.5Sig0.25_MinDofAcc0e+00_CmdRang1.0",
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca1.5Sig0.25_MinDofAcc0e+00_CmdRang2.0",
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca1.5Sig0.25_MinDofAcc0e+00_CmdRang3.0",
+                // ------------- MinDofAcc-1e-08 --------------
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-08_CmdRang1.0",
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-08_CmdRang2.0",
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-08_CmdRang3.0",  // FL leg always in the air when vx=3m/s
+                // ------------- MinDofAcc-1e-07 --------------
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-07_CmdRang1.0",
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-07_CmdRang2.0",
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-07_CmdRang3.0",
+                // ------------- MinDofAcc-1e-06 --------------
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-06_CmdRang1.0",
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-06_CmdRang2.0",
+                // "--load_run=a2_newUrdf23deg_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-06_CmdRang3.0",
+                // +--------------------------------------------------------------------------------------------------------+
+                // |                                                                                                        |
+                // |    redo on new urdf 20deg TwistSepSameExpSig0.25 Scale 0.5,1,1.5; MinDofAcc 0,-1e-8~-6; CmdRang 1-3    |
+                // |                                                                                                        |
+                // +--------------------------------------------------------------------------------------------------------+
+                // ================= TwistSepSameExpSca0.5Sig0.25 ==========================
+                // ------------- MinDofAcc0e+00 --------------
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca0.5Sig0.25_MinDofAcc0e+00_CmdRang1.0",  // [stand]: no shaking, base 0.36m, [vx 1m/s]: good, diagonal, base 0.32m
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca0.5Sig0.25_MinDofAcc0e+00_CmdRang2.0",
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca0.5Sig0.25_MinDofAcc0e+00_CmdRang3.0", // [stand]: big shaking, base 0.32m, [vx 3m/s]: good, diagonal, base 0.29m
+                // ------------- Opt among a3: MinDofAcc-1e-08 --------------  // Opt among a3
+                // "--load_run=a3Opt_newUrdf20deg_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-08_CmdRang1.0",  // [stand]: tiny shaking, base 0.35m, [vx 1m/s]: good, diagonal, base 0.31m
+                // "--load_run=a3Opt_newUrdf20deg_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-08_CmdRang2.0",
+                // "--load_run=a3Opt_newUrdf20deg_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-08_CmdRang3.0",  // [stand]: some shaking, base 0.33m, [vx 3m/s]: takes a while to start but ss good, base 0.3m
+                // ------------- MinDofAcc-1e-07 --------------
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-07_CmdRang1.0",
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-07_CmdRang2.0",
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-07_CmdRang3.0",  // pure jerky noise
+                // ------------- MinDofAcc-1e-06 --------------
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-06_CmdRang1.0",
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-06_CmdRang2.0",
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca0.5Sig0.25_MinDofAcc-1e-06_CmdRang3.0",  // pure jerky noise
+                // ================= TwistSepSameExpSca1.0Sig0.25 ==========================
+                // ------------- MinDofAcc0e+00 --------------
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca1.0Sig0.25_MinDofAcc0e+00_CmdRang1.0",
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca1.0Sig0.25_MinDofAcc0e+00_CmdRang2.0",
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca1.0Sig0.25_MinDofAcc0e+00_CmdRang3.0",  // [standing]: HL foot always in the air
+                // ------------- MinDofAcc-1e-08 --------------
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-08_CmdRang1.0",
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-08_CmdRang2.0",
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-08_CmdRang3.0",  // [standing]: two ft always in the air
+                // ------------- MinDofAcc-1e-07 --------------
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-07_CmdRang1.0",
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-07_CmdRang2.0",
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-07_CmdRang3.0",
+                // ------------- MinDofAcc-1e-06 --------------
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-06_CmdRang1.0",
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-06_CmdRang2.0",
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca1.0Sig0.25_MinDofAcc-1e-06_CmdRang3.0",
+                // ================= TwistSepSameExpSca1.5Sig0.25 ==========================
+                // ------------- MinDofAcc0e+00 --------------
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca1.5Sig0.25_MinDofAcc0e+00_CmdRang1.0",
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca1.5Sig0.25_MinDofAcc0e+00_CmdRang2.0",
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca1.5Sig0.25_MinDofAcc0e+00_CmdRang3.0",  // [standing]: two ft always in the air
+                // ------------- MinDofAcc-1e-08 --------------
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-08_CmdRang1.0",
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-08_CmdRang2.0",
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-08_CmdRang3.0",  // [standing]: HR foot always in the air
+                // ------------- MinDofAcc-1e-07 --------------
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-07_CmdRang1.0",
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-07_CmdRang2.0",
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-07_CmdRang3.0",
+                // ------------- MinDofAcc-1e-06 --------------
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-06_CmdRang1.0",
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-06_CmdRang2.0",
+                // "--load_run=a3_newUrdf20deg_TwistSepSameExpSca1.5Sig0.25_MinDofAcc-1e-06_CmdRang3.0",
+                // +--------------------------------------------------------------------------------------------------------+
+                // |                                                                                                        |
+                // |                     starting from a3Opt: TwistSepSameSca0.5Sig0.25 MinDofAcc-1e-08                     |
+                // |                                                                                                        |
+                // +--------------------------------------------------------------------------------------------------------+
+                "--load_run=c1_a3Opt_RollSuppPitch20Yaw20Dx0Dy-0.03_ArmaSet0.02_CmdRangAll1.0_v1.0.0",
+                // "--load_run=c1_a3Opt_RollSuppPitch20Yaw20Dx0Dy-0.03_ArmaSet0.02_CmdRangAll2.0",
+                // "--load_run=c1_a3Opt_RollSuppPitch20Yaw20Dx0Dy-0.03_ArmaSet0.02_CmdRangAll3.0",
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/legged_gym"
+            },
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
+        },
+    ]
+}

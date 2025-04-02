@@ -1,0 +1,48 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {   "name": "dbg: train go1_flat",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/legged_gym/legged_gym/scripts/train.py",
+            "args": [
+                "--task=go1_flat",
+                "--experiment_name=0_Round_0/go1_flat",
+                // "--headless"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {   "name": "dbg: play go1_flat_play",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/legged_gym/legged_gym/scripts/play.py",
+            "args": [
+                "--task=go1_flat_play",
+                "--checkpoint=-1",
+                "--experiment_name=0_Round_0/go1_flat",
+                "--load_run=b1Opt_27Opt_TwistSepSameExpSca0.5Sig0.25_NoMinDofAcc0Orig_ArmaSet0.02_v1.0.0",
+                // "--headless"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {   "name": "dbg: play go1_flat_roller_x_play",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/legged_gym/legged_gym/scripts/play.py",
+            "args": [
+                "--task=go1_flat_roller_x_play",
+                "--experiment_name=0_Round_0/go1_flat_roller_x",
+                "--checkpoint=-1",
+                "--load_run=c1_a3Opt_RollSuppPitch20Yaw20Dx0Dy-0.03_ArmaSet0.02_CmdRangAll1.0_v1.0.0",
+                // "--headless"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+    ]
+}

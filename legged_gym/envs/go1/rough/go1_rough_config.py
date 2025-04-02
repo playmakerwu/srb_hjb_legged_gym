@@ -64,12 +64,17 @@ class Go1RoughCfg( LeggedRobotCfg ):
         decimation = 4
 
     class asset( LeggedRobotCfg.asset ):
-        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/go1/urdf/go1.urdf'
+        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/go1_model/urdf/go1_obj.urdf'
+        # file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/go1_model/urdf/go1_simplified_stl.urdf'
         name = "go1"
         foot_name = "foot"
         penalize_contacts_on = ["thigh", "calf"]
         terminate_after_contacts_on = ["base"]
+        collapse_fixed_joints = True # merge bodies connected by fixed joints. Specific fixed joints can be kept by adding " <... dont_collapse="true">
+        default_dof_drive_mode = 3 # see GymDofDriveModeFlags (0 is none, 1 is pos tgt, 2 is vel tgt, 3 effort)
         self_collisions = 1 # 1 to disable, 0 to enable...bitwise filter
+        replace_cylinder_with_capsule = False # replace collision cylinders with capsules, leads to faster/more stable simulation
+        flip_visual_attachments = False # Some .dae meshes must be flipped from y-up to z-up
   
     class rewards( LeggedRobotCfg.rewards ):
         soft_dof_pos_limit = 0.9
