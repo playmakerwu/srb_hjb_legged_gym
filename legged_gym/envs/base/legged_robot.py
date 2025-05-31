@@ -131,7 +131,6 @@ class LeggedRobot(BaseTask):
         # start next round: 1. update last_xxx stuffs, 2. compute observations
         self.last_actions[:] = self.actions[:]
         self.last_dof_vel[:] = self.dof_vel[:]
-        self.last_base_lin_vel[:] = self.base_lin_vel[:]
         self.compute_observations() # in some cases a simulation step might be required to refresh some obs (for example body positions)
 
         if self.viewer and self.enable_viewer_sync and self.debug_viz:
@@ -558,7 +557,6 @@ class LeggedRobot(BaseTask):
         self.last_contacts = torch.zeros(self.num_envs, len(self.feet_indices), dtype=torch.bool, device=self.device, requires_grad=False)
         self.base_lin_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 7:10])
         self.base_ang_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 10:13])
-        self.last_base_lin_vel = torch.zeros_like(self.base_lin_vel)
         self.projected_gravity = quat_rotate_inverse(self.base_quat, self.gravity_vec)
         if self.cfg.terrain.measure_heights:
             self.height_points = self._init_height_points()
