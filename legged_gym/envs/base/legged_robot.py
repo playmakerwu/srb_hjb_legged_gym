@@ -125,13 +125,19 @@ class LeggedRobot(BaseTask):
         # compute rewards, resets, ...
         self.check_termination()
         self.compute_reward()
+        
+        # start next round
+        # NOTE: all states & commands are current for the following compute_observations()
+        # NOTE: self.actions is already the last actions for the following compute_observations()
         env_ids = self.reset_buf.nonzero(as_tuple=False).flatten()
         self.reset_idx(env_ids)
-
-        # start next round: 1. update last_xxx stuffs, 2. compute observations
-        self.last_actions[:] = self.actions[:]
-        self.last_dof_vel[:] = self.dof_vel[:]
         self.compute_observations() # in some cases a simulation step might be required to refresh some obs (for example body positions)
+
+        # update last_actions: used for computing action_rate penalty NOT for obsrv.
+        # it's the last_last_action for obsrv, but the last action for self.actions
+        self.last_actions[:] = self.actions[:]
+        # update last_dof_vel for computing dof_acc reward
+        self.last_dof_vel[:] = self.dof_vel[:]
 
         if self.viewer and self.enable_viewer_sync and self.debug_viz:
             self._draw_debug_vis()
@@ -167,7 +173,8 @@ class LeggedRobot(BaseTask):
         if self.cfg.commands.curriculum and (self.common_step_counter % self.max_episode_length==0):
             self.update_command_curriculum(env_ids)
         
-        # reset cur actions
+        # reset the past actions
+        # NOTE: this is the last action for obsrv, but the current action for calculating action_rate
         self.actions[env_ids] = 0.
         
         # reset cur robot states
@@ -177,7 +184,8 @@ class LeggedRobot(BaseTask):
         self._resample_commands(env_ids)
 
         # reset buffers
-        # the last_xxx buffers are updated after reset_idx() is called, so only reset cur stuffs here
+        self.last_actions[env_ids] = 0.
+        self.last_dof_vel[env_ids] = 0.
         self.feet_air_time[env_ids] = 0.
         self.episode_length_buf[env_ids] = 0
         self.reset_buf[env_ids] = 1
@@ -223,7 +231,7 @@ class LeggedRobot(BaseTask):
                                     self.commands[:, :3] * self.commands_scale,
                                     (self.dof_pos - self.default_dof_pos)[:, self.active_dof_indices] * self.obs_scales.dof_pos,
                                     self.dof_vel[:, self.active_dof_indices] * self.obs_scales.dof_vel,
-                                    self.last_actions
+                                    self.actions  # this is already the last action
                                     ),dim=-1)
         # add perceptive inputs if not blind
         if self.cfg.terrain.measure_heights:
@@ -549,6 +557,8 @@ class LeggedRobot(BaseTask):
         if len(self.active_dof_indices) != self.num_actions:
             raise ValueError("Number of active dofs must be equal to the number of actions")
 
+        # NOTE: self.last_actions is used for computing action_rate penalty NOT for obsrv.
+        # it's the last_last_action for obsrv, but the last action for self.actions
         self.last_actions = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device, requires_grad=False)
         self.last_dof_vel = torch.zeros_like(self.dof_vel)
         self.commands = torch.zeros(self.num_envs, self.cfg.commands.num_commands, dtype=torch.float, device=self.device, requires_grad=False) # x vel, y vel, yaw vel, heading
