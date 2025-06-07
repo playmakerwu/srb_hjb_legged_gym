@@ -93,6 +93,8 @@ class LeggedRobot(BaseTask):
             if self.device == 'cpu':
                 self.gym.fetch_results(self.sim, True)
             self.gym.refresh_dof_state_tensor(self.sim)
+            if self.cfg.control.control_type == "F":
+                self.gym.refresh_jacobian_tensors(self.sim)
         self.post_physics_step()
 
         # return clipped obs, clipped states (None), rewards, dones and infos
@@ -391,16 +393,29 @@ class LeggedRobot(BaseTask):
         """
         #pd controller
         actions_scaled = actions * self.cfg.control.action_scale
-        # passive dofs have actions_scaled = 0, but since their p_gains are checked to be 0 in _init_buffers(), action values are not used
-        # only the d_gains matter for passive dofs
-        self.actions_scaled_including_passive[:, self.active_dof_indices] = actions_scaled
         control_type = self.cfg.control.control_type
+        
+        if self.cfg.control.control_type in ["P", "V", "T"]:
+            # passive dofs have actions_scaled = 0, but since their p_gains are checked to be 0 in _init_buffers(), action values are not used
+            # only the d_gains matter for passive dofs
+            self.actions_scaled_including_passive[:, self.active_dof_indices] = actions_scaled
+        
         if control_type=="P":
             torques = self.p_gains*(self.actions_scaled_including_passive + self.default_dof_pos - self.dof_pos) - self.d_gains*self.dof_vel
         elif control_type=="V":
             torques = self.p_gains*(self.actions_scaled_including_passive - self.dof_vel) - self.d_gains*(self.dof_vel - self.last_dof_vel)/self.sim_params.dt
         elif control_type=="T":
             torques = self.actions_scaled_including_passive
+        elif control_type=="F":
+            # "grf" here means force from foot to ground
+            # For each env & each foot, grf_des_world = quat_WB * grf_des_base
+            grf_des_world = quat_rotate(self.base_quat.repeat_interleave(len(self.feet_indices), dim=0), \
+                                        actions_scaled.view(self.num_envs * len(self.feet_indices), 3) + self.grf_bias) \
+                            .view(self.num_envs, len(self.feet_indices), 1, 3)
+            
+            # For each env & each foot, torq_row_vec = grf_row_vec * jac
+            # For each env, torq = sum(torq) for each foot
+            torques = torch.sum(torch.matmul(grf_des_world, self.feet_jacobians[:, :, :3, 6:]), dim=1).view(self.num_envs, self.num_dofs)
         else:
             raise NameError(f"Unknown controller type: {control_type}")
         return torch.clip(torques, -self.torque_limits, self.torque_limits)
@@ -523,6 +538,10 @@ class LeggedRobot(BaseTask):
         self.gym.refresh_actor_root_state_tensor(self.sim)
         self.gym.refresh_net_contact_force_tensor(self.sim)
         self.gym.refresh_rigid_body_state_tensor(self.sim)
+        if self.cfg.control.control_type == "F":
+            # jacobian tensors only needed when using ground reaction force action
+            jacobians = self.gym.acquire_jacobian_tensor(self.sim, self.cfg.asset.name)
+            self.gym.refresh_jacobian_tensors(self.sim)
 
         # create some wrapper tensors for different slices
         self.root_states = gymtorch.wrap_tensor(actor_root_state)
@@ -534,6 +553,9 @@ class LeggedRobot(BaseTask):
 
         self.contact_forces = gymtorch.wrap_tensor(net_contact_forces).view(self.num_envs, -1, 3) # shape: num_envs, num_bodies, xyz axis
 
+        if self.cfg.control.control_type == "F":
+            self.feet_jacobians = gymtorch.wrap_tensor(jacobians)[:, self.feet_indices, :, :]
+
         # initialize some data used later on
         self.common_step_counter = 0
         self.extras = {}
@@ -544,7 +566,8 @@ class LeggedRobot(BaseTask):
         self.p_gains = torch.zeros(self.num_dofs, dtype=torch.float, device=self.device, requires_grad=False)
         self.d_gains = torch.zeros(self.num_dofs, dtype=torch.float, device=self.device, requires_grad=False)
         self.actions = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device, requires_grad=False)
-        self.actions_scaled_including_passive = torch.zeros(self.num_envs, self.num_dof, dtype=torch.float, device=self.device, requires_grad=False)
+        if self.cfg.control.control_type in ["P", "V", "T"]:
+            self.actions_scaled_including_passive = torch.zeros(self.num_envs, self.num_dof, dtype=torch.float, device=self.device, requires_grad=False)
         self.active_dof_indices = []
         for idx, dof_name in enumerate(self.dof_names):
             is_passive = False
@@ -596,6 +619,10 @@ class LeggedRobot(BaseTask):
                     if (passive_dof_name_keyword in name) and (self.p_gains[i] != 0.):
                         raise ValueError(f"Passive joint {name} set to have non-zero stiffness")
         self.default_dof_pos = self.default_dof_pos.unsqueeze(0)
+
+        # ground reaction force bias
+        if self.cfg.control.control_type == "F":
+            self.grf_bias = torch.tensor(self.cfg.control.grf_bias, dtype=torch.float, device=self.device, requires_grad=False)
 
     def _prepare_reward_function(self):
         """ Prepares a list of reward functions, whcih will be called to compute the total reward.

@@ -41,6 +41,7 @@ from .a1.a1_config import A1RoughCfg, A1RoughCfgPPO
 from .go1.rough.go1_rough_config import Go1RoughCfg, Go1RoughCfgPPO
 from .go1.flat.go1_flat_config import Go1FlatCfg, Go1FlatCfgPPO
 from .go1.flat.go1_flat_play_config import Go1FlatPlayCfg, Go1FlatPlayCfgPPO
+from .go1.flat.go1_flat_grf_config import Go1FlatGrfCfg, Go1FlatGrfCfgPPO
 from .go1.flat.go1_flat_roller_x_config import Go1FlatRollerXCfg, Go1FlatRollerXCfgPPO
 from .go1.flat.go1_flat_roller_x_play_config import Go1FlatRollerXPlayCfg, Go1FlatRollerXPlayCfgPPO
 
@@ -55,6 +56,7 @@ task_registry.register( "a1", LeggedRobot, A1RoughCfg(), A1RoughCfgPPO() )
 task_registry.register( "go1_rough", LeggedRobot, Go1RoughCfg(), Go1RoughCfgPPO() )
 task_registry.register( "go1_flat", LeggedRobot, Go1FlatCfg(), Go1FlatCfgPPO())
 task_registry.register( "go1_flat_play", LeggedRobot, Go1FlatPlayCfg(), Go1FlatPlayCfgPPO())
+task_registry.register( "go1_flat_grf", LeggedRobot, Go1FlatGrfCfg(), Go1FlatGrfCfgPPO())
 task_registry.register( "go1_flat_roller_x", LeggedRobot, Go1FlatRollerXCfg(), Go1FlatRollerXCfgPPO())
 task_registry.register( "go1_flat_roller_x_play", LeggedRobot, Go1FlatRollerXPlayCfg(), Go1FlatRollerXPlayCfgPPO())
 task_registry.register( "cassie", Cassie, CassieRoughCfg(), CassieRoughCfgPPO() )
