@@ -94,6 +94,8 @@ class LeggedRobot(BaseTask):
                 self.gym.fetch_results(self.sim, True)
             self.gym.refresh_dof_state_tensor(self.sim)
             if self.cfg.control.control_type == "F":
+                self.gym.refresh_rigid_body_state_tensor(self.sim)
+                self.gym.refresh_actor_root_state_tensor(self.sim)
                 self.gym.refresh_jacobian_tensors(self.sim)
         self.post_physics_step()
 
@@ -409,13 +411,13 @@ class LeggedRobot(BaseTask):
         elif control_type=="F":
             # "grf" here means force from foot to ground
             # For each env & each foot, grf_des_world = quat_WB * grf_des_base
-            grf_des_world = quat_rotate(self.base_quat.repeat_interleave(len(self.feet_indices), dim=0), \
+            grf_des_world = quat_rotate(self.root_states[:, 3:7].repeat_interleave(len(self.feet_indices), dim=0), \
                                         actions_scaled.view(self.num_envs * len(self.feet_indices), 3) + self.grf_bias) \
                             .view(self.num_envs, len(self.feet_indices), 1, 3)
             
             # For each env & each foot, torq_row_vec = grf_row_vec * jac
             # For each env, torq = sum(torq) for each foot
-            torques = torch.sum(torch.matmul(grf_des_world, self.feet_jacobians[:, :, :3, 6:]), dim=1).view(self.num_envs, self.num_dofs)
+            torques = torch.sum(torch.matmul(grf_des_world, self.jacobians[:, self.feet_indices, :3, 6:]), dim=1).view(self.num_envs, self.num_dofs)
         else:
             raise NameError(f"Unknown controller type: {control_type}")
         return torch.clip(torques, -self.torque_limits, self.torque_limits)
@@ -554,7 +556,7 @@ class LeggedRobot(BaseTask):
         self.contact_forces = gymtorch.wrap_tensor(net_contact_forces).view(self.num_envs, -1, 3) # shape: num_envs, num_bodies, xyz axis
 
         if self.cfg.control.control_type == "F":
-            self.feet_jacobians = gymtorch.wrap_tensor(jacobians)[:, self.feet_indices, :, :]
+            self.jacobians = gymtorch.wrap_tensor(jacobians)
 
         # initialize some data used later on
         self.common_step_counter = 0
