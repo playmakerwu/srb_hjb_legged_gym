@@ -33,8 +33,8 @@ from legged_gym.envs.go1.flat.go1_flat_config import Go1FlatCfg, Go1FlatCfgPPO
 class Go1FlatGrfCfg( Go1FlatCfg ):
     class control( Go1FlatCfg.control ):
         control_type = 'F'
-        action_scale = 500.
-        grf_bias = [0., 0., -350.]  # unit [N], only effective for control_type = 'F', force from foot to ground
+        action_scale = 40.
+        grf_bias = [0., 0., 0.]  # unit [N], only effective for control_type = 'F', force from foot to ground
 
 
 class Go1FlatGrfCfgPPO( Go1FlatCfgPPO ):

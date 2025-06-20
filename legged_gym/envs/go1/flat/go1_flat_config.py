@@ -141,7 +141,7 @@ class Go1FlatCfg( LeggedRobotCfg ):
             base_height = -5.
 
             torques = -0.  # ETH -1.e-5, MinTorqOnly: -1.e-3
-            # dof_vel = -0.
+            dof_vel = -0
             dof_acc = -0.  # ETH -2.5e-7, MinAccOnly: -1.e-7, using ETH's is fine if needed
             action_rate = -0.01
 
