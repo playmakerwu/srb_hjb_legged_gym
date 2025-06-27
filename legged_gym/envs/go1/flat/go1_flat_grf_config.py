@@ -36,6 +36,10 @@ class Go1FlatGrfCfg( Go1FlatCfg ):
         action_scale = 40.
         grf_bias = [0., 0., 0.]  # unit [N], only effective for control_type = 'F', force from foot to ground
 
+    class rewards( Go1FlatCfg.rewards ):
+        class scales( Go1FlatCfg.rewards.scales ):
+            base_height = -7.5.
+
 
 class Go1FlatGrfCfgPPO( Go1FlatCfgPPO ):
     class policy( Go1FlatCfgPPO.policy ):
@@ -47,4 +51,5 @@ class Go1FlatGrfCfgPPO( Go1FlatCfgPPO ):
         experiment_name = 'go1_flat_grf'
         run_name = ''
         # load_run = -1
-        # max_iterations = 300
+        max_iterations = 20000
+        save_interval = 500
