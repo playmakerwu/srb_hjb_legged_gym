@@ -38,7 +38,7 @@ class Go1FlatGrfCfg( Go1FlatCfg ):
 
     class rewards( Go1FlatCfg.rewards ):
         class scales( Go1FlatCfg.rewards.scales ):
-            base_height = -7.5.
+            base_height = -7.5
 
 
 class Go1FlatGrfCfgPPO( Go1FlatCfgPPO ):
