@@ -39,6 +39,7 @@ class Go1FlatGrfCfg( Go1FlatCfg ):
     class rewards( Go1FlatCfg.rewards ):
         class scales( Go1FlatCfg.rewards.scales ):
             base_height = -7.5
+            dof_acc = -1e-6
 
 
 class Go1FlatGrfCfgPPO( Go1FlatCfgPPO ):
@@ -51,5 +52,5 @@ class Go1FlatGrfCfgPPO( Go1FlatCfgPPO ):
         experiment_name = 'go1_flat_grf'
         run_name = ''
         # load_run = -1
-        max_iterations = 20000
+        max_iterations = 10000
         save_interval = 500
