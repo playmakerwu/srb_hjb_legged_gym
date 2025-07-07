@@ -35,6 +35,7 @@ import numpy as np
 import os
 
 from isaacgym.torch_utils import *
+
 from isaacgym import gymtorch, gymapi, gymutil
 
 import torch
@@ -135,6 +136,8 @@ class LeggedRobot(BaseTask):
         # NOTE: self.actions is already the last actions for the following compute_observations()
         env_ids = self.reset_buf.nonzero(as_tuple=False).flatten()
         self.reset_idx(env_ids)
+        x, y, z = self.compute_srb_dynamics()
+        print(f"base_lin_vel_dot: {x[0]}, base_ang_vel_dot: {y[0]}, projected_gravity_dot: {z[0]}")
         self.compute_observations() # in some cases a simulation step might be required to refresh some obs (for example body positions)
 
         # update last_actions: used for computing action_rate penalty NOT for obsrv.
@@ -225,6 +228,115 @@ class LeggedRobot(BaseTask):
             rew = self._reward_termination() * self.reward_scales["termination"]
             self.rew_buf += rew
             self.episode_sums["termination"] += rew
+
+    def compute_srb_dynamics(self):
+        base_lin_vel = self.obs_buf[:, :3] 
+        base_ang_vel = self.obs_buf[:, 3:6] 
+        base_pos = self.root_states[:, :3]
+        projected_gravity = self.obs_buf[:, 6:9]
+        commands = self.obs_buf[:, 9:12] 
+        num_envs = self.obs_buf.shape[0]
+        actions = self.obs_buf[:, -12:].clone().view(num_envs, 4, 3)
+
+        # base weight = m_base + m_motor * 8
+        m_base = 5.204
+        m_motor = 0.089
+        base_weight = m_base + m_motor * 12
+        I_base = torch.tensor([
+            [0.0168129, -0.0002297, -0.0002945],
+            [-0.0002297, 0.0630096, -0.00004187],
+            [-0.0002945, -0.00004187, 0.0716547]
+        ], dtype=torch.float32, device=self.device)
+        diff_x, diff_y = 17.78, 7.62
+        I_base[0, 0] += 8 * m_motor * (diff_y/1000)**2
+        I_base[1, 1] += 8 * m_motor * (diff_x/1000)**2
+        I_batch = I_base.unsqueeze(0).repeat(num_envs, 1, 1)
+        
+
+        # compute base linear velocity
+        assert base_lin_vel.shape == (num_envs, 3), "Base linear velocity shape mismatch"
+        self.gym.refresh_net_contact_force_tensor(self.sim)
+        contact_force = self.contact_forces[:, self.feet_indices, :].clone() # (num_envs, 4, 3)
+        print(f"contact_force: {contact_force[0]}")
+        contact_indicator = contact_force < -20 # inference from contact force in legged_gym 
+        base_lin_vel_dot = -torch.cross(base_ang_vel, base_lin_vel, dim=1)
+        total_contact_force = actions * contact_indicator
+        total_contact_force = torch.sum(total_contact_force, dim=1) 
+        base_lin_vel_dot += total_contact_force / base_weight
+
+        # compute base angular velocity
+        # inertia needs to update Ixx, Iyy, Izz according to leg configuration
+        inertia = I_batch # from config
+        quat = self.base_quat
+        Rwb = self.quaternion_to_matrix(quat)
+        Rwb_T = torch.transpose(Rwb, 1, 2)
+        Rwb_T_expanded = Rwb_T.unsqueeze(1).repeat(1, 4, 1, 1) # (num_envs, 4, 3, 3)
+        foot_pos, _ = self._get_feet_world_states()
+        base_pos_expanded = base_pos.unsqueeze(1).repeat(1, 4, 1) # (num_envs, 4, 3)
+        relative_foot_pos = (foot_pos - base_pos_expanded).unsqueeze(-1)   # (num_envs, 4, 3, 1)
+        r_i_B = torch.matmul(Rwb_T_expanded, relative_foot_pos).squeeze(-1) # (num_envs, 4, 3)
+        f_i_B = actions * contact_indicator # (num_envs, 4, 3)
+        #assert r_i_B.shape == (num_envs, 4, 3)
+        #assert f_i_B.shape == (num_envs, 4, 3)
+        #import pdb;
+        #pdb.set_trace()
+        tau = torch.sum(torch.cross(r_i_B, f_i_B, dim=2), dim=1).unsqueeze(-1) # (num_envs, 3, 1)
+        inertia_inv = torch.linalg.inv(inertia)
+        base_ang_vel_dot = torch.matmul(inertia_inv, tau) 
+
+        # projected_gravity_dot
+        projected_gravity_dot = -torch.cross(base_ang_vel, projected_gravity, dim=1)
+        
+        return base_lin_vel_dot, base_ang_vel_dot, projected_gravity_dot
+    
+    def _get_feet_world_states(self):
+        self.gym.refresh_rigid_body_state_tensor(self.sim)
+
+        # rigid_body_states[..., :3] = pos  |  rigid_body_states[..., 7:10] = lin vel
+        foot_pos_w = self.rigid_body_states[:, self.feet_indices, :3]
+        foot_vel_w = self.rigid_body_states[:, self.feet_indices, 7:10]
+        return foot_pos_w, foot_vel_w
+
+    def quaternion_to_matrix(self, q: torch.Tensor) -> torch.Tensor:
+        """
+        Convert a batch of quaternions to rotation matrices.
+
+        Parameters
+        ----------
+        q : torch.Tensor
+            Shape (..., 4).  Component order must be (x, y, z, w).
+
+        Returns
+        -------
+        R : torch.Tensor
+            Shape (..., 3, 3).  Each last-dimension 3×3 block is the
+            column-major rotation matrix that rotates **body → world**.
+        """
+        #--- split components ----------------------------------------------------
+        x, y, z, w = q.unbind(-1)
+
+        #--- pre-compute products -------------------------------------------------
+        xx, yy, zz = x*x, y*y, z*z
+        ww = w*w
+        xy, xz, yz = x*y, x*z, y*z
+        wx, wy, wz = w*x, w*y, w*z
+
+        #--- build the rotation matrix ------------------------------------------
+        R = torch.empty(*q.shape[:-1], 3, 3, dtype=q.dtype, device=q.device)
+
+        R[..., 0, 0] = ww + xx - yy - zz
+        R[..., 0, 1] = 2.0 * (xy - wz)
+        R[..., 0, 2] = 2.0 * (xz + wy)
+
+        R[..., 1, 0] = 2.0 * (xy + wz)
+        R[..., 1, 1] = ww - xx + yy - zz
+        R[..., 1, 2] = 2.0 * (yz - wx)
+
+        R[..., 2, 0] = 2.0 * (xz - wy)
+        R[..., 2, 1] = 2.0 * (yz + wx)
+        R[..., 2, 2] = ww - xx - yy + zz
+
+        return R
     
     def compute_observations(self):
         """ Computes observations
