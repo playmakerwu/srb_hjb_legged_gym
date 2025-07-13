@@ -105,7 +105,7 @@ class LeggedRobot(BaseTask):
         self.obs_buf = torch.clip(self.obs_buf, -clip_obs, clip_obs)
         if self.privileged_obs_buf is not None:
             self.privileged_obs_buf = torch.clip(self.privileged_obs_buf, -clip_obs, clip_obs)
-        return self.obs_buf, self.privileged_obs_buf, self.rew_buf, self.reset_buf, self.extras
+        return self.obs_buf, self.privileged_obs_buf, self.rew_buf, self.reset_buf, self.extras, self.srb_dynamics_buf
 
     def post_physics_step(self):
         """ check terminations, compute observations and rewards
@@ -137,7 +137,7 @@ class LeggedRobot(BaseTask):
         env_ids = self.reset_buf.nonzero(as_tuple=False).flatten()
         self.reset_idx(env_ids)
         x, y, z = self.compute_srb_dynamics()
-        print(f"base_lin_vel_dot: {x[0]}, base_ang_vel_dot: {y[0]}, projected_gravity_dot: {z[0]}")
+        #print(f"base_lin_vel_dot: {x.shape}, base_ang_vel_dot: {y.shape}, projected_gravity_dot: {z.shape}")
         self.compute_observations() # in some cases a simulation step might be required to refresh some obs (for example body positions)
 
         # update last_actions: used for computing action_rate penalty NOT for obsrv.
@@ -257,10 +257,10 @@ class LeggedRobot(BaseTask):
         assert base_lin_vel.shape == (num_envs, 3), "Base linear velocity shape mismatch"
         self.gym.refresh_net_contact_force_tensor(self.sim)
         contact_force = self.contact_forces[:, self.feet_indices, :].clone() # (num_envs, 4, 3)
-        print(f"contact_force: {contact_force[0]}")
-        contact_indicator = contact_force < -20 # inference from contact force in legged_gym 
+        #print(f"contact_force: {contact_force[0]}")
+        contact_indicator = torch.ones_like(contact_force) # inference from contact force in legged_gym
         base_lin_vel_dot = -torch.cross(base_ang_vel, base_lin_vel, dim=1)
-        total_contact_force = actions * contact_indicator
+        total_contact_force = contact_force * contact_indicator
         total_contact_force = torch.sum(total_contact_force, dim=1) 
         base_lin_vel_dot += total_contact_force / base_weight
 
@@ -275,7 +275,7 @@ class LeggedRobot(BaseTask):
         base_pos_expanded = base_pos.unsqueeze(1).repeat(1, 4, 1) # (num_envs, 4, 3)
         relative_foot_pos = (foot_pos - base_pos_expanded).unsqueeze(-1)   # (num_envs, 4, 3, 1)
         r_i_B = torch.matmul(Rwb_T_expanded, relative_foot_pos).squeeze(-1) # (num_envs, 4, 3)
-        f_i_B = actions * contact_indicator # (num_envs, 4, 3)
+        f_i_B = contact_force * contact_indicator # (num_envs, 4, 3)
         #assert r_i_B.shape == (num_envs, 4, 3)
         #assert f_i_B.shape == (num_envs, 4, 3)
         #import pdb;
@@ -286,9 +286,11 @@ class LeggedRobot(BaseTask):
 
         # projected_gravity_dot
         projected_gravity_dot = -torch.cross(base_ang_vel, projected_gravity, dim=1)
-        
-        return base_lin_vel_dot, base_ang_vel_dot, projected_gravity_dot
-    
+        self.srb_dynamics_buf["base_lin_vel_dot"][:] = base_lin_vel_dot
+        self.srb_dynamics_buf["base_ang_vel_dot"][:] = base_ang_vel_dot.squeeze(-1)
+        self.srb_dynamics_buf["projected_gravity_dot"][:] = projected_gravity_dot
+        return base_lin_vel_dot, base_ang_vel_dot.squeeze(-1), projected_gravity_dot
+
     def _get_feet_world_states(self):
         self.gym.refresh_rigid_body_state_tensor(self.sim)
 
@@ -737,6 +739,13 @@ class LeggedRobot(BaseTask):
         # ground reaction force bias
         if self.cfg.control.control_type == "F":
             self.grf_bias = torch.tensor(self.cfg.control.grf_bias, dtype=torch.float, device=self.device, requires_grad=False)
+
+        # srb_dynamics buffer
+        self.srb_dynamics_buf = {
+            "base_lin_vel_dot": torch.zeros(self.num_envs, 3, dtype=torch.float, device=self.device),
+            "base_ang_vel_dot": torch.zeros(self.num_envs, 3, dtype=torch.float, device=self.device),
+            "projected_gravity_dot": torch.zeros(self.num_envs, 3, dtype=torch.float, device=self.device)
+        }
 
     def _prepare_reward_function(self):
         """ Prepares a list of reward functions, whcih will be called to compute the total reward.
