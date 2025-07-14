@@ -286,9 +286,9 @@ class LeggedRobot(BaseTask):
 
         # projected_gravity_dot
         projected_gravity_dot = -torch.cross(base_ang_vel, projected_gravity, dim=1)
-        self.srb_dynamics_buf["base_lin_vel_dot"][:] = base_lin_vel_dot
-        self.srb_dynamics_buf["base_ang_vel_dot"][:] = base_ang_vel_dot.squeeze(-1)
-        self.srb_dynamics_buf["projected_gravity_dot"][:] = projected_gravity_dot
+        self.srb_dynamics_buf[:, :3] = base_lin_vel_dot
+        self.srb_dynamics_buf[:, 3:6] = base_ang_vel_dot.squeeze(-1)
+        self.srb_dynamics_buf[:, 6:9] = projected_gravity_dot
         return base_lin_vel_dot, base_ang_vel_dot.squeeze(-1), projected_gravity_dot
 
     def _get_feet_world_states(self):
@@ -741,11 +741,7 @@ class LeggedRobot(BaseTask):
             self.grf_bias = torch.tensor(self.cfg.control.grf_bias, dtype=torch.float, device=self.device, requires_grad=False)
 
         # srb_dynamics buffer
-        self.srb_dynamics_buf = {
-            "base_lin_vel_dot": torch.zeros(self.num_envs, 3, dtype=torch.float, device=self.device),
-            "base_ang_vel_dot": torch.zeros(self.num_envs, 3, dtype=torch.float, device=self.device),
-            "projected_gravity_dot": torch.zeros(self.num_envs, 3, dtype=torch.float, device=self.device)
-        }
+        self.srb_dynamics_buf = torch.zeros(self.num_envs, 9, dtype=torch.float, device=self.device)
 
     def _prepare_reward_function(self):
         """ Prepares a list of reward functions, whcih will be called to compute the total reward.
