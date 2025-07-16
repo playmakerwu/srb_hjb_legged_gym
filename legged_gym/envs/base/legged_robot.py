@@ -155,8 +155,8 @@ class LeggedRobot(BaseTask):
         self.compute_observations() 
         x, y, z = self.compute_srb_dynamics()
         fd = self.compute_finite_differences()
-        print("fd_gym", fd[5][:9])
-        print("srb_dynamics", self.srb_dynamics_buf[5][:9])
+        #print("fd_gym", fd[5][:9])
+        #print("srb_dynamics", self.srb_dynamics_buf[5][:9])
         #print(f"base_lin_vel_dot: {x.shape}, base_ang_vel_dot: {y.shape}, projected_gravity_dot: {z.shape}")
         # in some cases a simulation step might be required to refresh some obs (for example body positions)
 
