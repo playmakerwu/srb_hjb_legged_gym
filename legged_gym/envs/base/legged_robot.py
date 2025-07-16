@@ -76,6 +76,7 @@ class LeggedRobot(BaseTask):
         self._init_buffers()
         self._prepare_reward_function()
         self.init_done = True
+        self.t = 0
 
     def step(self, actions):
         """ Apply actions, simulate, call self.post_physics_step()
@@ -105,9 +106,24 @@ class LeggedRobot(BaseTask):
         self.obs_buf = torch.clip(self.obs_buf, -clip_obs, clip_obs)
         if self.privileged_obs_buf is not None:
             self.privileged_obs_buf = torch.clip(self.privileged_obs_buf, -clip_obs, clip_obs)
-        return self.obs_buf, self.privileged_obs_buf, self.rew_buf, self.reset_buf, self.extras, self.srb_dynamics_buf
+        if self.finite_difference is None:
+            self.finite_difference = torch.zeros_like(self.obs_buf)
 
-    def post_physics_step(self):
+        self.t += 1
+
+        return self.obs_buf, self.privileged_obs_buf, self.rew_buf, self.reset_buf, self.extras, self.t * torch.ones_like(self.finite_difference)
+
+    def compute_finite_differences(self):
+        if self.last_obs is None:
+            self.finite_difference = torch.zeros_like(self.obs_buf)
+            return self.finite_difference
+
+        dt = self.dt
+        self.finite_difference = (self.obs_buf - self.last_obs) / dt
+        return self.finite_difference
+
+
+    def post_physics_step(self): # finite differ
         """ check terminations, compute observations and rewards
             calls self._post_physics_step_callback() for common computations 
             calls self._draw_debug_vis() if needed
@@ -136,13 +152,18 @@ class LeggedRobot(BaseTask):
         # NOTE: self.actions is already the last actions for the following compute_observations()
         env_ids = self.reset_buf.nonzero(as_tuple=False).flatten()
         self.reset_idx(env_ids)
+        self.compute_observations() 
         x, y, z = self.compute_srb_dynamics()
+        fd = self.compute_finite_differences()
+        print("fd_gym", fd[5][:9])
+        print("srb_dynamics", self.srb_dynamics_buf[5][:9])
         #print(f"base_lin_vel_dot: {x.shape}, base_ang_vel_dot: {y.shape}, projected_gravity_dot: {z.shape}")
-        self.compute_observations() # in some cases a simulation step might be required to refresh some obs (for example body positions)
+        # in some cases a simulation step might be required to refresh some obs (for example body positions)
 
         # update last_actions: used for computing action_rate penalty NOT for obsrv.
         # it's the last_last_action for obsrv, but the last action for self.actions
         self.last_actions[:] = self.actions[:]
+        self.last_obs = self.obs_buf.clone()
         # update last_dof_vel for computing dof_acc reward
         self.last_dof_vel[:] = self.dof_vel[:]
 
@@ -735,6 +756,7 @@ class LeggedRobot(BaseTask):
                     if (passive_dof_name_keyword in name) and (self.p_gains[i] != 0.):
                         raise ValueError(f"Passive joint {name} set to have non-zero stiffness")
         self.default_dof_pos = self.default_dof_pos.unsqueeze(0)
+        self.last_obs = None
 
         # ground reaction force bias
         if self.cfg.control.control_type == "F":
