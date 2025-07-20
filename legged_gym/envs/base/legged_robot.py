@@ -119,7 +119,7 @@ class LeggedRobot(BaseTask):
             return self.finite_difference
 
         dt = self.dt
-        self.finite_difference = (self.obs_buf - self.last_obs) / dt
+        self.finite_difference = (self.obs_buf - self.last_obs)
         return self.finite_difference
 
 
