@@ -153,10 +153,12 @@ class LeggedRobot(BaseTask):
         env_ids = self.reset_buf.nonzero(as_tuple=False).flatten()
         self.reset_idx(env_ids)
         self.compute_observations() 
-        x, y, z = self.compute_srb_dynamics()
         fd = self.compute_finite_differences()
-        #print("fd_gym", fd[5][:9])
-        #print("srb_dynamics", self.srb_dynamics_buf[5][:9])
+        x, y, z = self.compute_srb_dynamics()
+        
+        #print("fd_gym", fd[5][:6])
+        #print("srb_dynamics", self.srb_dynamics_buf[5][:6])
+        #print("observations", self.obs_buf[5][:3])
         #print(f"base_lin_vel_dot: {x.shape}, base_ang_vel_dot: {y.shape}, projected_gravity_dot: {z.shape}")
         # in some cases a simulation step might be required to refresh some obs (for example body positions)
 
@@ -251,22 +253,27 @@ class LeggedRobot(BaseTask):
             self.episode_sums["termination"] += rew
 
     def compute_srb_dynamics(self):
-        base_lin_vel = self.obs_buf[:, :3] 
-        base_ang_vel = self.obs_buf[:, 3:6] 
+        base_lin_vel = self.base_lin_vel.clone()
+        base_ang_vel = self.base_ang_vel.clone()
         base_pos = self.root_states[:, :3]
-        projected_gravity = self.obs_buf[:, 6:9]
-        commands = self.obs_buf[:, 9:12] 
+        projected_gravity = self.projected_gravity.clone()
+        commands = self.obs_buf[:, 9:12].clone()
         num_envs = self.obs_buf.shape[0]
         actions = self.obs_buf[:, -12:].clone().view(num_envs, 4, 3)
 
         # base weight = m_base + m_motor * 8
         m_base = 5.204
-        m_motor = 0.089
+        m_motor = 0.5
         base_weight = m_base + m_motor * 12
+        total_weight = 13.1 # total weight of the robot
+        #row‑0 : Vec3(0.018144, -0.000247, -0.000291)
+        #row‑1 : Vec3(-0.000247, 0.067993, -0.000042)
+        #row‑2 : Vec3(-0.000291, -0.000042, 0.077422)
+
         I_base = torch.tensor([
-            [0.0168129, -0.0002297, -0.0002945],
-            [-0.0002297, 0.0630096, -0.00004187],
-            [-0.0002945, -0.00004187, 0.0716547]
+            [0.018144, -0.000247, -0.000291],
+            [-0.000247, 0.067993, -0.000042],
+            [-0.000291, -0.000042, 0.077422]
         ], dtype=torch.float32, device=self.device)
         diff_x, diff_y = 17.78, 7.62
         I_base[0, 0] += 8 * m_motor * (diff_y/1000)**2
@@ -277,13 +284,19 @@ class LeggedRobot(BaseTask):
         # compute base linear velocity
         assert base_lin_vel.shape == (num_envs, 3), "Base linear velocity shape mismatch"
         self.gym.refresh_net_contact_force_tensor(self.sim)
-        contact_force = self.contact_forces[:, self.feet_indices, :].clone() # (num_envs, 4, 3)
-        #print(f"contact_force: {contact_force[0]}")
+        contact_force_w = self.contact_forces[:, self.feet_indices, :].clone() # (num_envs, 4, 3)
+        Rwb = self.quaternion_to_matrix(self.base_quat)
+        Rwb_T = Rwb.transpose(1, 2) # (num_envs, 3, 3)
+        Rbw_exp = Rwb_T.unsqueeze(1).repeat(1, 4, 1, 1) # (num_envs, 4, 3, 3)
+        contact_force = torch.matmul(Rbw_exp, contact_force_w.unsqueeze(-1)).squeeze(-1) # (num_envs, 4, 3)
+        #print(f"contact_force: {contact_force[5]}") # debug
         contact_indicator = torch.ones_like(contact_force) # inference from contact force in legged_gym
         base_lin_vel_dot = -torch.cross(base_ang_vel, base_lin_vel, dim=1)
         total_contact_force = contact_force * contact_indicator
         total_contact_force = torch.sum(total_contact_force, dim=1) 
-        base_lin_vel_dot += total_contact_force / base_weight
+        base_lin_vel_dot += (total_contact_force / total_weight)
+        base_lin_vel_dot += 9.81 * projected_gravity # gravity in z direction
+
 
         # compute base angular velocity
         # inertia needs to update Ixx, Iyy, Izz according to leg configuration
@@ -304,13 +317,17 @@ class LeggedRobot(BaseTask):
         tau = torch.sum(torch.cross(r_i_B, f_i_B, dim=2), dim=1).unsqueeze(-1) # (num_envs, 3, 1)
         inertia_inv = torch.linalg.inv(inertia)
         base_ang_vel_dot = torch.matmul(inertia_inv, tau) 
+        import pdb;
+        pdb.set_trace()
 
         # projected_gravity_dot
         projected_gravity_dot = -torch.cross(base_ang_vel, projected_gravity, dim=1)
-        self.srb_dynamics_buf[:, :3] = base_lin_vel_dot
-        self.srb_dynamics_buf[:, 3:6] = base_ang_vel_dot.squeeze(-1)
+        self.srb_dynamics_buf[:, :3] = base_lin_vel_dot*self.obs_scales.lin_vel
+        self.srb_dynamics_buf[:, 3:6] = base_ang_vel_dot.squeeze(-1)*self.obs_scales.ang_vel
         self.srb_dynamics_buf[:, 6:9] = projected_gravity_dot
-        return base_lin_vel_dot, base_ang_vel_dot.squeeze(-1), projected_gravity_dot
+        
+        #self.finite_difference[:, :9]
+        return base_lin_vel_dot*self.obs_scales.lin_vel, base_ang_vel_dot.squeeze(-1)*self.obs_scales.ang_vel, projected_gravity_dot
 
     def _get_feet_world_states(self):
         self.gym.refresh_rigid_body_state_tensor(self.sim)
@@ -474,6 +491,18 @@ class LeggedRobot(BaseTask):
         #         print(f"Mass of body {i}: {p.mass} (before randomization)")
         #     print(f"Total mass {sum} (before randomization)")
         # randomize base mass
+        '''
+        if env_id == 0 and not hasattr(self, "_inertia_logged"):
+            I_raw = props[0].inertia     # gymapi.Mat33 → 不做任何转换
+            print("===== base_link inertia (raw Mat33) =====")
+            print("I_raw :", I_raw)      # 一行直接打印对象
+            print("row‑0 :", I_raw.x)    # Vec3，含 Ixx,Ixy, Ixz
+            print("row‑1 :", I_raw.y)    # Vec3，含 Iyx,Iyy, Iyz
+            print("row‑2 :", I_raw.z)    # Vec3,  含 Izx,Izy, Izz
+            print("========================================")
+            self._inertia_logged = True  # 标记已打印
+        '''
+        #test
         if self.cfg.domain_rand.randomize_base_mass:
             rng = self.cfg.domain_rand.added_mass_range
             props[0].mass += np.random.uniform(rng[0], rng[1])
