@@ -276,8 +276,8 @@ class LeggedRobot(BaseTask):
             [-0.000291, -0.000042, 0.077422]
         ], dtype=torch.float32, device=self.device)
         diff_x, diff_y = 17.78, 7.62
-        I_base[0, 0] += 8 * m_motor * (diff_y/1000)**2
-        I_base[1, 1] += 8 * m_motor * (diff_x/1000)**2
+        I_base[0, 0] += 8 * m_motor * (diff_y/100)**2
+        I_base[1, 1] += 8 * m_motor * (diff_x/100)**2
         I_batch = I_base.unsqueeze(0).repeat(num_envs, 1, 1)
         
 
