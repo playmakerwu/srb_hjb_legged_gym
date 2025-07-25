@@ -111,7 +111,7 @@ class LeggedRobot(BaseTask):
 
         self.t += 1
 
-        return self.obs_buf, self.privileged_obs_buf, self.rew_buf, self.reset_buf, self.extras, self.t * torch.ones_like(self.finite_difference)
+        return self.obs_buf, self.privileged_obs_buf, self.rew_buf, self.reset_buf, self.extras, self.finite_difference
 
     def compute_finite_differences(self):
         if self.last_obs is None:
@@ -119,7 +119,7 @@ class LeggedRobot(BaseTask):
             return self.finite_difference
 
         dt = self.dt
-        self.finite_difference = (self.obs_buf - self.last_obs)
+        self.finite_difference = (self.obs_buf - self.last_obs) / dt
         return self.finite_difference
 
 
@@ -318,7 +318,7 @@ class LeggedRobot(BaseTask):
         inertia_inv = torch.linalg.inv(inertia)
         base_ang_vel_dot = torch.matmul(inertia_inv, tau) 
         import pdb;
-        pdb.set_trace()
+        #pdb.set_trace()
 
         # projected_gravity_dot
         projected_gravity_dot = -torch.cross(base_ang_vel, projected_gravity, dim=1)
@@ -326,7 +326,7 @@ class LeggedRobot(BaseTask):
         self.srb_dynamics_buf[:, 3:6] = base_ang_vel_dot.squeeze(-1)*self.obs_scales.ang_vel
         self.srb_dynamics_buf[:, 6:9] = projected_gravity_dot
         
-        #self.finite_difference[:, :9]
+        self.finite_difference[:, 6:9] = self.srb_dynamics_buf[:, 6:9]
         return base_lin_vel_dot*self.obs_scales.lin_vel, base_ang_vel_dot.squeeze(-1)*self.obs_scales.ang_vel, projected_gravity_dot
 
     def _get_feet_world_states(self):

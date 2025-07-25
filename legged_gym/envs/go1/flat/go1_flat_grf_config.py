@@ -52,5 +52,5 @@ class Go1FlatGrfCfgPPO( Go1FlatCfgPPO ):
         experiment_name = 'go1_flat_grf'
         run_name = ''
         # load_run = -1
-        max_iterations = 10000
+        max_iterations = 7000
         save_interval = 500
