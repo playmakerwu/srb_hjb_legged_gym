@@ -1,3 +1,6 @@
 [submodule "resources/robots/go1_model"]
 	path = resources/robots/go1_model
 	url = git@github.com:hwang-warren/go1_model.git
+[submodule "rsl_rl"]
+	path = rsl_rl
+	url = git@github.com:playmakerwu/rsl_rl.git
