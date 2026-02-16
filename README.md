@@ -1,105 +1,337 @@
-# Isaac Gym Environments for Legged Robots #
-This repository provides the environment used to train ANYmal (and other robots) to walk on rough terrain using NVIDIA's Isaac Gym.
-It includes all components needed for sim-to-real transfer: actuator network, friction & mass randomization, noisy observations and random pushes during training.  
+# SRB-HJB Reinforcement Learning for Legged Locomotion
 
-**Maintainer**: Nikita Rudin  
-**Affiliation**: Robotic Systems Lab, ETH Zurich  
-**Contact**: rudinn@ethz.ch  
+**Author:** Yiru Wu, University of Wisconsin-Madison
+
+A reinforcement learning framework for quadruped locomotion that replaces conventional position-based control with **direct force control** and augments standard PPO with a **Hamilton-Jacobi-Bellman (HJB) residual loss** derived from a **Single Rigid Body (SRB) dynamics model**. Built on top of NVIDIA Isaac Gym and the legged_gym framework.
 
 ---
 
-### :bell: Announcement (09.01.2024) ###
+## Table of Contents
 
-With the shift from Isaac Gym to Isaac Sim at NVIDIA, we have migrated all the environments from this work to [Isaac Lab](https://github.com/isaac-sim/IsaacLab). Following this migration, this repository will receive limited updates and support. We encourage all users to migrate to the new framework for their applications.
-
-Information about this work's locomotion-related tasks in Isaac Lab is available [here](https://isaac-sim.github.io/IsaacLab/source/features/environments.html#locomotion).
+- [Key Idea](#key-idea)
+- [Algorithm Overview](#algorithm-overview)
+  - [Force-Based Control](#force-based-control)
+  - [HJB-Augmented Critic Loss](#hjb-augmented-critic-loss)
+  - [SRB Dynamics Model](#srb-dynamics-model)
+  - [Full Training Objective](#full-training-objective)
+- [Project Structure](#project-structure)
+- [Installation](#installation)
+  - [Prerequisites](#prerequisites)
+  - [Step 1 — Install Isaac Gym](#step-1--install-isaac-gym)
+  - [Step 2 — Clone This Repository and Load Submodules](#step-2--clone-this-repository-and-load-submodules)
+  - [Step 3 — Install the RL Library (rsl_rl) from the SRB Branch](#step-3--install-the-rl-library-rsl_rl-from-the-srb-branch)
+  - [Step 4 — Install This Package](#step-4--install-this-package)
+- [Usage](#usage)
+  - [Training](#training)
+  - [Evaluation](#evaluation)
+  - [Configuration](#configuration)
+- [Toggling SRB-HJB](#toggling-srb-hjb)
+- [Acknowledgements](#acknowledgements)
+- [License](#license)
 
 ---
 
-### Useful Links ###
+## Key Idea
 
-Project website: https://leggedrobotics.github.io/legged_gym/   
-Paper: https://arxiv.org/abs/2109.11978
+Standard RL for legged robots typically uses **position targets** as actions, which are then tracked by low-level PD controllers. This project makes two fundamental changes:
 
-### Installation ###
-1. Create a new python virtual env with python 3.6, 3.7 or 3.8 (3.8 recommended)
-2. Install pytorch 1.10 with cuda-11.3:
-    - `pip3 install torch==1.10.0+cu113 torchvision==0.11.1+cu113 torchaudio==0.10.0+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html`
-3. Install Isaac Gym
-   - Download and install Isaac Gym Preview 3 (Preview 2 will not work!) from https://developer.nvidia.com/isaac-gym
-   - `cd isaacgym/python && pip install -e .`
-   - Try running an example `cd examples && python 1080_balls_of_solitude.py`
-   - For troubleshooting check docs `isaacgym/docs/index.html`)
-4. Install rsl_rl (PPO implementation)
-   - Clone https://github.com/leggedrobotics/rsl_rl
-   -  `cd rsl_rl && git checkout v1.0.2 && pip install -e .` 
-5. Install legged_gym
-    - Clone this repository
-   - `cd legged_gym && pip install -e .`
+1. **Actions are ground reaction forces (GRFs).** The policy directly outputs desired contact forces in the body frame, which are mapped to joint torques via the contact Jacobian. This gives the policy direct control over the robot's dynamics.
 
-### CODE STRUCTURE ###
-1. Each environment is defined by an env file (`legged_robot.py`) and a config file (`legged_robot_config.py`). The config file contains two classes: one containing  all the environment parameters (`LeggedRobotCfg`) and one for the training parameters (`LeggedRobotCfgPPo`).  
-2. Both env and config classes use inheritance.  
-3. Each non-zero reward scale specified in `cfg` will add a function with a corresponding name to the list of elements which will be summed to get the total reward.  
-4. Tasks must be registered using `task_registry.register(name, EnvClass, EnvConfig, TrainConfig)`. This is done in `envs/__init__.py`, but can also be done from outside of this repository.  
+2. **The critic is regularized by physics.** Instead of learning the value function purely from reward signals, we inject a physics-based constraint: the value function should approximately satisfy the HJB equation, where the system dynamics come from a Single Rigid Body model.
 
-### Usage ###
-1. Train:  
-  ```python legged_gym/scripts/train.py --task=anymal_c_flat```
-    -  To run on CPU add following arguments: `--sim_device=cpu`, `--rl_device=cpu` (sim on CPU and rl on GPU is possible).
-    -  To run headless (no rendering) add `--headless`.
-    - **Important**: To improve performance, once the training starts press `v` to stop the rendering. You can then enable it later to check the progress.
-    - The trained policy is saved in `issacgym_anymal/logs/<experiment_name>/<date_time>_<run_name>/model_<iteration>.pt`. Where `<experiment_name>` and `<run_name>` are defined in the train config.
-    -  The following command line arguments override the values set in the config files:
-     - --task TASK: Task name.
-     - --resume:   Resume training from a checkpoint
-     - --experiment_name EXPERIMENT_NAME: Name of the experiment to run or load.
-     - --run_name RUN_NAME:  Name of the run.
-     - --load_run LOAD_RUN:   Name of the run to load when resume=True. If -1: will load the last run.
-     - --checkpoint CHECKPOINT:  Saved model checkpoint number. If -1: will load the last checkpoint.
-     - --num_envs NUM_ENVS:  Number of environments to create.
-     - --seed SEED:  Random seed.
-     - --max_iterations MAX_ITERATIONS:  Maximum number of training iterations.
-2. Play a trained policy:  
-```python legged_gym/scripts/play.py --task=anymal_c_flat```
-    - By default, the loaded policy is the last model of the last run of the experiment folder.
-    - Other runs/model iteration can be selected by setting `load_run` and `checkpoint` in the train config.
+---
 
-### Adding a new environment ###
-The base environment `legged_robot` implements a rough terrain locomotion task. The corresponding cfg does not specify a robot asset (URDF/ MJCF) and has no reward scales. 
+## Algorithm Overview
 
-1. Add a new folder to `envs/` with `'<your_env>_config.py`, which inherit from an existing environment cfgs  
-2. If adding a new robot:
-    - Add the corresponding assets to `resources/`.
-    - In `cfg` set the asset path, define body names, default_joint_positions and PD gains. Specify the desired `train_cfg` and the name of the environment (python class).
-    - In `train_cfg` set `experiment_name` and `run_name`
-3. (If needed) implement your environment in <your_env>.py, inherit from an existing environment, overwrite the desired functions and/or add your reward functions.
-4. Register your env in `isaacgym_anymal/envs/__init__.py`.
-5. Modify/Tune other parameters in your `cfg`, `cfg_train` as needed. To remove a reward set its scale to zero. Do not modify parameters of other envs!
+### Force-Based Control
 
+In the standard position-control setup, the policy outputs joint position offsets and a PD controller tracks them:
 
-### Troubleshooting ###
-1. If you get the following error: `ImportError: libpython3.8m.so.1.0: cannot open shared object file: No such file or directory`, do: `sudo apt install libpython3.8`. It is also possible that you need to do `export LD_LIBRARY_PATH=/path/to/libpython/directory` / `export LD_LIBRARY_PATH=/path/to/conda/envs/your_env/lib`(for conda user. Replace /path/to/ to the corresponding path.).
-
-### Known Issues ###
-1. The contact forces reported by `net_contact_force_tensor` are unreliable when simulating on GPU with a triangle mesh terrain. A workaround is to use force sensors, but the force are propagated through the sensors of consecutive bodies resulting in an undesirable behaviour. However, for a legged robot it is possible to add sensors to the feet/end effector only and get the expected results. When using the force sensors make sure to exclude gravity from the reported forces with `sensor_options.enable_forward_dynamics_forces`. Example:
 ```
-    sensor_pose = gymapi.Transform()
-    for name in feet_names:
-        sensor_options = gymapi.ForceSensorProperties()
-        sensor_options.enable_forward_dynamics_forces = False # for example gravity
-        sensor_options.enable_constraint_solver_forces = True # for example contacts
-        sensor_options.use_world_frame = True # report forces in world frame (easier to get vertical components)
-        index = self.gym.find_asset_rigid_body_index(robot_asset, name)
-        self.gym.create_asset_force_sensor(robot_asset, index, sensor_pose, sensor_options)
-    (...)
-
-    sensor_tensor = self.gym.acquire_force_sensor_tensor(self.sim)
-    self.gym.refresh_force_sensor_tensor(self.sim)
-    force_sensor_readings = gymtorch.wrap_tensor(sensor_tensor)
-    self.sensor_forces = force_sensor_readings.view(self.num_envs, 4, 6)[..., :3]
-    (...)
-
-    self.gym.refresh_force_sensor_tensor(self.sim)
-    contact = self.sensor_forces[:, :, 2] > 1.
+τ = Kp * (a * scale + q_default - q) - Kd * dq
 ```
+
+In our force-control setup (`control_type = "F"`), the policy outputs desired ground reaction forces for each foot in the body frame. These are converted to joint torques via:
+
+```
+τ = Σ_feet  (GRF_world)^T · J_foot
+```
+
+where `J_foot` is the contact Jacobian and `GRF_world = R_wb * (a * scale + bias)`.
+
+### HJB-Augmented Critic Loss
+
+In continuous-time RL, the optimal value function `V*(x)` satisfies the Hamilton-Jacobi-Bellman equation:
+
+```
+ρ V(x) = r(x) + ∇V(x) · f(x)
+```
+
+where `ρ = -ln(γ)` is the continuous-time discount rate, `r(x)` is the instantaneous reward, and `f(x)` is the system dynamics.
+
+We enforce this as a soft constraint on the critic network. At each update step, the HJB residual loss is:
+
+```
+L_hjb = || ρ V(x) - [ r(x) + ∇_x V(x) · f(x) ] ||²
+```
+
+The gradient `∇_x V(x)` is computed by differentiating the critic output with respect to its input via `torch.autograd.grad`, with `create_graph=True` so that the HJB loss itself is differentiable and can backpropagate through the critic.
+
+### SRB Dynamics Model
+
+The dynamics `f(x)` in the HJB equation are provided by a **Single Rigid Body (SRB)** model evaluated inside the simulator at each timestep. The SRB model computes three derivative quantities in the body frame:
+
+```
+f(x) = [ base_lin_vel_dot,  base_ang_vel_dot,  projected_gravity_dot ]
+```
+
+Specifically:
+
+- **Linear acceleration:** `-ω × v + (1/m) Σ F_contact + g_projected`
+- **Angular acceleration:** `I⁻¹ Σ (r_foot × F_contact)`
+- **Gravity derivative:** `-ω × g_projected`
+
+where contact forces are rotated into the body frame, foot positions are expressed relative to the base, and the inertia tensor `I` accounts for both the base link and motor masses.
+
+These SRB derivatives are stored in `srb_dynamics_buf` (shape `[num_envs, 9]`) and passed to the PPO update as the ground-truth `f(x)` for the HJB loss.
+
+### Full Training Objective
+
+The total loss for each PPO update is:
+
+```
+L = L_surrogate + c_v * L_value - c_e * H(π) + c_hjb * L_hjb
+```
+
+| Term | Description |
+|------|-------------|
+| `L_surrogate` | Clipped PPO surrogate objective (policy loss) |
+| `L_value` | Clipped value function regression loss |
+| `H(π)` | Policy entropy bonus |
+| `L_hjb` | HJB residual loss (physics-informed critic regularization) |
+| `c_hjb` | HJB loss coefficient (`hjb_coef`, default 0.1) |
+
+When `hjb_coef = 0` or `enable_srb_dynamics = False`, the system reduces to standard PPO.
+
+---
+
+## Project Structure
+
+```
+legged_gym/
+├── README.md
+├── setup.py
+├── .gitmodules                          # submodule registration
+│
+├── legged_gym/
+│   ├── envs/
+│   │   ├── base/
+│   │   │   ├── legged_robot.py          # main env: init, step, reset, buffers
+│   │   │   ├── legged_robot_config.py   # all config dataclasses
+│   │   │   ├── legged_robot_rewards.py  # reward computation & 22 reward terms
+│   │   │   ├── legged_robot_dynamics.py # SRB dynamics, finite differences, quat utils
+│   │   │   ├── legged_robot_observations.py  # observation assembly & noise
+│   │   │   ├── legged_robot_sim_setup.py     # sim/terrain/env creation, heights
+│   │   │   ├── legged_robot_callbacks.py     # domain rand, torques, resets, curricula
+│   │   │   └── base_task.py
+│   │   └── go1/
+│   │       ├── go1_config.py            # Go1-specific config (force control params)
+│   │       └── ...
+│   │
+│   ├── utils/
+│   │   ├── terrain.py
+│   │   ├── math.py
+│   │   ├── helpers.py
+│   │   └── ...
+│   │
+│   └── scripts/
+│       ├── train.py                     # training entry point
+│       └── play.py                      # evaluation / visualization
+│
+└── rsl_rl/                              # ← git submodule (srb branch)
+    ├── rsl_rl/
+    │   ├── algorithms/
+    │   │   └── ppo.py                   # PPO + HJB loss implementation
+    │   ├── modules/
+    │   │   └── actor_critic.py
+    │   └── storage/
+    │       └── rollout_storage.py       # stores srb_dynamics alongside transitions
+    └── setup.py
+```
+
+### Environment Module Breakdown
+
+The monolithic environment file is decomposed into focused modules using a **mixin pattern**. `LeggedRobot` inherits from all five mixins plus `BaseTask`, so `from .legged_robot import LeggedRobot` remains the single import for all downstream code.
+
+| File | Responsibility |
+|------|---------------|
+| `legged_robot.py` | Core loop: `__init__`, `step`, `post_physics_step`, `reset_idx`, `_init_buffers` |
+| `legged_robot_rewards.py` | `compute_reward`, `_prepare_reward_function`, all `_reward_*` terms |
+| `legged_robot_dynamics.py` | `compute_srb_dynamics`, `compute_finite_differences`, `quaternion_to_matrix` |
+| `legged_robot_observations.py` | `compute_observations`, `_get_noise_scale_vec` |
+| `legged_robot_sim_setup.py` | `create_sim`, terrain creation, `_create_envs`, height queries, debug vis |
+| `legged_robot_callbacks.py` | Domain randomization, `_compute_torques`, resets, curricula |
+
+---
+
+## Installation
+
+### Prerequisites
+
+- Ubuntu 20.04 or 22.04
+- Python 3.8+
+- NVIDIA GPU with CUDA 11.4+ and compatible drivers
+- Conda (recommended)
+
+### Step 1 — Install Isaac Gym
+
+Download Isaac Gym Preview 4 from [NVIDIA Isaac Gym](https://developer.nvidia.com/isaac-gym).
+
+```bash
+# Extract the downloaded archive
+tar -xzf IsaacGym_Preview_4.tar.gz
+cd isaacgym/python
+
+# Create and activate a conda environment
+conda create -n srb_hjb python=3.8 -y
+conda activate srb_hjb
+
+# Install Isaac Gym
+pip install -e .
+
+# Verify installation
+python -c "import isaacgym; print('Isaac Gym installed successfully')"
+```
+
+### Step 2 — Clone This Repository and Load Submodules
+
+```bash
+git clone --recurse-submodules https://github.com/YiruWu/legged_gym.git
+cd legged_gym
+```
+
+If you already cloned without `--recurse-submodules`:
+
+```bash
+git submodule update --init --recursive
+```
+
+### Step 3 — Install the RL Library (rsl_rl) from the SRB Branch
+
+The PPO + HJB implementation lives on the `srb` branch of the `rsl_rl` submodule. You must check out that branch before installing:
+
+```bash
+cd rsl_rl
+git checkout srb
+pip install -e .
+cd ..
+```
+
+### Step 4 — Install This Package
+
+```bash
+pip install -e .
+```
+
+---
+
+## Usage
+
+### Training
+
+```bash
+python legged_gym/scripts/train.py --task=go1 --headless
+```
+
+Common training flags:
+
+| Flag | Description |
+|------|-------------|
+| `--task` | Environment name (e.g., `go1`) |
+| `--headless` | Run without GUI (recommended for training) |
+| `--num_envs` | Number of parallel environments (default: 4096) |
+| `--max_iterations` | Total training iterations |
+| `--resume` | Resume from latest checkpoint |
+| `--checkpoint` | Path to a specific checkpoint to load |
+
+### Evaluation
+
+```bash
+python legged_gym/scripts/play.py --task=go1 --checkpoint=<path_to_model.pt>
+```
+
+This launches the Isaac Gym viewer and runs the trained policy.
+
+### Configuration
+
+All environment and training hyperparameters are defined in config dataclasses. For the Go1 robot:
+
+- **Environment config:** `legged_gym/envs/go1/go1_config.py`
+- **Base config:** `legged_gym/envs/base/legged_robot_config.py`
+
+Key config fields for this project:
+
+```python
+class env:
+    enable_srb_dynamics = True   # toggle SRB computation in the env
+
+class control:
+    control_type = "F"           # "P" = position, "F" = force (GRF)
+    action_scale = 1.0
+    grf_bias = [0.0, 0.0, 3.27] # per-foot GRF bias (gravity compensation)
+```
+
+PPO hyperparameters (passed to the `PPO` class in `rsl_rl`):
+
+```python
+hjb_coef = 0.1      # HJB loss weight (0.0 = pure PPO)
+gamma = 0.998        # discount factor (ρ = -ln(γ) ≈ 0.002)
+learning_rate = 1e-3
+num_learning_epochs = 5
+num_mini_batches = 4
+```
+
+---
+
+## Toggling SRB-HJB
+
+A single config flag controls whether the framework runs as standard PPO or PPO + SRB-HJB:
+
+| Setting | Env Side | Algorithm Side | Behavior |
+|---------|----------|---------------|----------|
+| `enable_srb_dynamics = True`, `hjb_coef > 0` | Computes SRB dynamics each step | Adds HJB residual to critic loss | **Full PPO + SRB-HJB** |
+| `enable_srb_dynamics = False`, `hjb_coef = 0` | Skips SRB (buffer stays zero) | Pure value regression loss | **Standard PPO** |
+
+To switch between the two modes, set both values in your config:
+
+```python
+# --- PPO + SRB-HJB mode ---
+class env:
+    enable_srb_dynamics = True
+
+class algorithm:
+    hjb_coef = 0.1
+
+# --- Pure PPO mode ---
+class env:
+    enable_srb_dynamics = False
+
+class algorithm:
+    hjb_coef = 0.0
+```
+
+---
+
+## Acknowledgements
+
+This project builds upon the following open-source work:
+
+- [legged_gym](https://github.com/leggedrobotics/legged_gym) — NVIDIA & ETH Zurich (Nikita Rudin), BSD-3-Clause
+- [rsl_rl](https://github.com/leggedrobotics/rsl_rl) — ETH Zurich, Robotic Systems Lab, BSD-3-Clause
+- [Isaac Gym](https://developer.nvidia.com/isaac-gym) — NVIDIA Corporation
+
+All modifications and the current version: Copyright © 2025 Yiru Wu, University of Wisconsin-Madison.
+
+## License
+
+This project is released under the BSD-3-Clause License. See [LICENSE](LICENSE) for details.
