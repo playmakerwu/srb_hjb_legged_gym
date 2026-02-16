@@ -37,3 +37,4 @@ class Go1FlatGrfHjbCfg( Go1FlatGrfCfg ):
 class Go1FlatGrfHjbCfgPPO( Go1FlatGrfCfgPPO ):
     class algorithm( Go1FlatGrfCfgPPO.algorithm ):
         hjb_coef = 1.23
+        enable_srb_dynamics = False
